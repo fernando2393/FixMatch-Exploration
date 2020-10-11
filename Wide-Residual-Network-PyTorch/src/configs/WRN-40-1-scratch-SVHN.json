@@ -1,0 +1,10 @@
+{
+  "training":{
+    "dataset": "SVHN",
+    "wrn_depth": 40,
+    "wrn_width": 1,
+    "seeds": "0",
+    "checkpoint": "True",
+    "log": "True"
+  }
+}
