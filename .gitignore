@@ -143,5 +143,8 @@ fabric.properties
 
 # End of https://www.toptal.com/developers/gitignore/api/vscode,pycharm,macos
 
+# Ignore .idea entirely
+.idea
+
 # Ignore datasets
 /datasets
