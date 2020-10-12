@@ -1,14 +1,21 @@
+"""
+Adapted from original Google Research Code:
+https://github.com/google-research/fixmatch/blob/master/libml/ctaugment.py
+"""
+
+import inspect
 import random
 import numpy as np
-from collections import namedtuple
+import Transformations
+# from collections import namedtuple
 
-augment = {}  # Create a dictionary where the information from each transformation will be stored. The key will be
-# the name of the transformation
-augment_tuple = namedtuple('augment_tuple', ('transformation', 'bins'))
-
-
-def get_augmentation_bins(bins, transform):
-    augment[transform] = augment_tuple()
+# augment = {}  # Create a dictionary where the information from each transformation will be stored. The key will be
+# # the name of the transformation
+# augment_tuple = namedtuple('augment_tuple', ('transformation', 'bins'))
+#
+#
+# def get_augmentation_bins(bins, transform):
+#     augment[transform] = augment_tuple()
 
 
 class CTAugment:
@@ -17,8 +24,12 @@ class CTAugment:
         self.depth = 2
         self.t = t
         self.rates = {}  # this is the variable thar will store all the weights for each of the transformations
-        for function_name, op in augment.items():
-            self.rates[function_name] = list([np.ones(x, 'f') for x in op.bins])  # Each transformation has different
+        self.registry = {}
+        transformations = inspect.getmembers(Transformations, predicate=inspect.isfunction)  # Get function names
+        for i in range(len(Transformations.BIN_LIST)):  # Iterate over function tuples
+            self.registry[transformations[i][0]] = Transformations.BIN_LIST[i]  # Fill registry with name and bins
+        for function_name, bin_list in self.registry.items():
+            self.rates[function_name] = list([np.ones(x, 'f') for x in bin_list])  # Each transformation has different
             # parameters. The range that these parameters can take is divided into bins. This list will contain as
             # many elements (arrays) as parameters and each element/array will have as many ones as in size.
 
