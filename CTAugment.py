@@ -62,3 +62,4 @@ class CTAugment:
             new_bins.append(augment_tuple(transformation, new_bin_elements))
 
         return new_bins
+
