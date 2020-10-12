@@ -11,7 +11,6 @@ def get_augmentation_bins(bins, transform):
     augment[transform] = augment_tuple()
 
 
-
 class CTAugment:
     def __init__(self, depth=2, t=0.8, ro=0.99):
         self.ro = ro
