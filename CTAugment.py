@@ -30,7 +30,6 @@ class CTAugment:
 
         return probability
 
-
     def policy(self,
                probe):  # This function will define the policy according to which the weights of the bins will be
         # updated
@@ -63,4 +62,3 @@ class CTAugment:
             new_bins.append(augment_tuple(transformation, new_bin_elements))
 
         return new_bins
-
