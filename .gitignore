@@ -145,6 +145,3 @@ fabric.properties
 
 # Ignore .idea entirely
 .idea
-
-# Ignore datasets
-/datasets
