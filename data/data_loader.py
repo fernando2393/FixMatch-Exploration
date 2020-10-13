@@ -19,25 +19,27 @@ SVHN_std = (0.1980, 0.2010, 0.1970)
 # Set randomness reproducibility
 np.random.seed(42)
 
+
 ###### TRANSFORMATIONS ######
 def tensor_normalizer(mean, std):
     # Normalizing the testing images
     return transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=mean, std=std)])
 
+
 def weakly_augmentation(mean, std):
     # Perform weak transformation on labeled and unlabeled training images
     weak_transform = transforms.Compose([
-                                            transforms.RandomHorizontalFlip(),
-                                            transforms.RandomCrop(size=32,
-                                                                padding=int(32*0.125),
-                                                                padding_mode='reflect'),
-                                            transforms.ToTensor(),
-                                            transforms.Normalize(mean=mean, std=std)
-                                        ])
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomCrop(size=32,
+                              padding=int(32 * 0.125),
+                              padding_mode='reflect'),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=mean, std=std)
+    ])
     return weak_transform
 
-def split_labeled_unlabeled(root, num_labeled, mean, std, n_classes, labels, balanced_split=True):
 
+def split_labeled_unlabeled(root, num_labeled, mean, std, n_classes, labels, balanced_split=True):
     if balanced_split:
         # Define number of labeled samples per class
         lsamples_per_class = num_labeled // n_classes
@@ -51,12 +53,12 @@ def split_labeled_unlabeled(root, num_labeled, mean, std, n_classes, labels, bal
             unlabeled_indeces.extend(tmp_indeces[lsamples_per_class:])
     else:
         print("TO DO: DEFINE UNBALANCED DATA SETS")
-    
+
     # Transform label data -> weak transformation
-    train_labeled_data = dataTransformation(root, labeled_indeces, train = True, transform = weakly_augmentation(mean, std))
-    
+    train_labeled_data = dataTransformation(root, labeled_indeces, train=True, transform=weakly_augmentation(mean, std))
+
     # Transform unlabeled data -> weak transformationa and CTAugment
-    train_unlabeled_data = dataTransformation(root, unlabeled_indeces, train = True, transform = SSLTransform(mean, std))
+    train_unlabeled_data = dataTransformation(root, unlabeled_indeces, train=True, transform=SSLTransform(mean, std))
 
     return train_labeled_data, train_unlabeled_data
 
@@ -65,7 +67,7 @@ def split_labeled_unlabeled(root, num_labeled, mean, std, n_classes, labels, bal
 class dataTransformation(datasets.CIFAR10):
     def __init__(self, root, indeces, train=True, transform=None, target_transform=None, download=False):
         # Accessing CIFAR10 from torchvision
-        super().__init__(root, train=train,transform=transform,target_transform=target_transform,download=download)
+        super().__init__(root, train=train, transform=transform, target_transform=target_transform, download=download)
         if indeces is not None:
             self.data = self.data[indeces]
             self.targets = np.array(self.targets)[indeces]
@@ -79,6 +81,7 @@ class dataTransformation(datasets.CIFAR10):
 
         return img, target
 
+
 ###### UNLABELED DATA WEAKLY & STRONGLY AUGMENTATION ######
 class SSLTransform(object):
     def __init__(self, mean, std):
@@ -87,17 +90,18 @@ class SSLTransform(object):
 
         # Strongly Data Augmentation
         self.strongly = transforms.Compose([
-                                            transforms.RandomHorizontalFlip(),
-                                            transforms.RandomCrop(size=32, padding=int(32*0.125), padding_mode='reflect'),
-                                            #CTAugment(),
-                                            transforms.ToTensor(),
-                                            transforms.Normalize(mean=mean, std=std)
-                                        ])
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomCrop(size=32, padding=int(32 * 0.125), padding_mode='reflect'),
+            # CTAugment(),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=mean, std=std)
+        ])
 
     def __call__(self, x):
         weakly_augment = self.weakly(x)
         strongly_augment = self.strongly(x)
         return weakly_augment, strongly_augment
+
 
 ###### LOADING DATA ######
 # Load CIFAR-10
@@ -107,26 +111,22 @@ def load_cifar10(root, num_labeled):
     labels = np.array(raw_data.targets)
 
     # Import test data
-    test_data  = datasets.CIFAR10(root, train=False, transform = tensor_normalizer(mean = CIFAR10_mean, std = CIFAR10_std), download=False)
+    test_data = datasets.CIFAR10(root, train=False, transform=tensor_normalizer(mean=CIFAR10_mean, std=CIFAR10_std),
+                                 download=False)
 
     # split data into labeled and unlabeled
     train_labeled_data, train_unlabeled_data = split_labeled_unlabeled(
-                                                                        root,
-                                                                        num_labeled,
-                                                                        CIFAR10_mean,
-                                                                        CIFAR10_std,
-                                                                        n_classes = 10,
-                                                                        labels = labels,
-                                                                        balanced_split=True
-                                                                       )
+        root,
+        num_labeled,
+        CIFAR10_mean,
+        CIFAR10_std,
+        n_classes=10,
+        labels=labels,
+        balanced_split=True
+    )
 
     return train_labeled_data, train_unlabeled_data, test_data
 
 # Load SVHN
 
 # Load MNIST
-
-
-
-
-

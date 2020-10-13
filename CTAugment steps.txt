@@ -1,0 +1,36 @@
+1. In main_fixmatch he calls cta = get_default_cta() (line 52). 
+This will return the class "StorableCTAugment", It receives a "state" and sets 
+the attributes of an object of the type CTAugment with the properties contained in "state" (NOT SURE HOW STATE IS CREATED!)
+
+From ctaugment/__init__.py:
+
+class StorableCTAugment(CTAugment):
+    def load_state_dict(self, state):
+        for k in ["decay", "depth", "th", "rates"]:
+            assert k in state, "{} not in {}".format(k, state.keys())
+            setattr(self, k, state[k])
+
+    def state_dict(self):
+        return OrderedDict(
+            [(k, getattr(self, k)) for k in ["decay", "depth", "th", "rates"]]
+        )
+
+
+def get_default_cta():
+    return StorableCTAugment()
+
+2. "cta" is now an object of the type CTAugment. It is used as a parameter for "utils.get_dataflow" in main_fixmatch.py (line 59).
+
+	a. Inside get_dataflow, the function "get_cta_probe_loader" (from __init__.py in folder dataflow) is used, where another
+function "get_cta_probe_loader" from cifar10.py is applied (yes... this is inception of functions now... doesn't make any sense, it's just messing the code).
+	
+	b. Inside get_cta_probe_loader from cifar10.py, the train_dataset (from cifar10.py) is used as input. 
+ 		
+		- The class TransformedDataset (from dataflow/__init__.py) is used in order to return the transformed data. It has an __init__ and __getitem__.
+			It uses "cta_probe_transforms" (from cifar10.py) that performs the transformations to the images.
+		
+		
+3. From "utils.get_dataflow" we obtain as an output "cta_probe_loader", which is the class "TransformedDataset". This class will be performing the augmentations applying CTA policies.
+
+4. Then, the output "cta_probe_loader" is used in "trainers.create_trainer" (line 133 from main_fixmatch.py). This function uses the "cta" from step 2 and "cta_probe_loader"
+ in order to generate the data batches. --> This function is a real mess...

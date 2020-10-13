@@ -7,6 +7,8 @@ import inspect
 import random
 import numpy as np
 import Transformations
+
+
 # from collections import namedtuple
 
 # augment = {}  # Create a dictionary where the information from each transformation will be stored. The key will be
@@ -21,7 +23,7 @@ import Transformations
 class CTAugment:
     def __init__(self, depth=2, t=0.8, ro=0.99):
         self.ro = ro
-        self.depth = 2
+        self.depth = depth
         self.t = t
         self.rates = {}  # this is the variable thar will store all the weights for each of the transformations
         self.registry = {}
@@ -44,7 +46,7 @@ class CTAugment:
     def policy(self,
                probe):  # This function will define the policy according to which the weights of the bins will be
         # updated
-        transformation_list = list(augment.keys())
+        transformation_list = list(self.rates.keys())
         new_bins = list()
         if probe:
             for _ in range(self.depth):
@@ -54,7 +56,8 @@ class CTAugment:
                 # parameters). Each array will contain 17 elements (bins). It's a way of discretizing the parameters
                 # ranges
                 sample = np.random.uniform(0, 1, len(bins))
-                new_bins.append(augment_tuple(transformation, sample.tolist()))
+                new_bins.append((transformation, sample.tolist()))  # Returning a tuple with the transformation name
+                # and the new sample
 
             return new_bins
 
@@ -63,13 +66,13 @@ class CTAugment:
             transformation = random.choice(transformation_list)
             bins = self.rates[transformation]
             sample = np.random.uniform(0, 1, len(bins))
-            new_bins.append(augment_tuple(transformation, sample.tolist()))
+            new_bins.append((transformation, sample.tolist()))
             for rand_number, bin_ in zip(sample,
                                          bins):  # bin_ corresponds to each bin array per transformation parameter
                 p = self.bin_weights_to_p(bin_)
                 selected_bin = np.random.choice(p.shape[0], p=(p / p.sum()))
                 new_bin_elements.append(
                     (selected_bin + rand_number) / p.shape[0])  # Choose random number within bin range
-            new_bins.append(augment_tuple(transformation, new_bin_elements))
+            new_bins.append((transformation, new_bin_elements))
 
         return new_bins
