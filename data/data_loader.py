@@ -1,7 +1,7 @@
 # Data manipulation
 import numpy as np
 from PIL import Image
-from .CTAugment import CTAugment
+from CTAugment import CTAugment
 
 # Access CIFAR-10, MNIST and SVHN
 import torch
@@ -15,6 +15,9 @@ MNIST_mean = (0.1307)
 MNIST_std = (0.3081)
 SVHN_mean = (0.4377, 0.4438, 0.4728)
 SVHN_std = (0.1980, 0.2010, 0.1970)
+
+# Set randomness reproducibility
+np.random.seed(42)
 
 ###### TRANSFORMATIONS ######
 def tensor_normalizer(mean, std):
@@ -33,22 +36,22 @@ def weakly_augmentation(mean, std):
                                         ])
     return weak_transform
 
-def split_labeled_unlabeled(root, num_labeled, labeled_batch_size, unlabeled_batch_size, mean, std, n_classes, balanced_split=True):
-    data = datasets.CIFAR10(root, train=True, download=True)
+def split_labeled_unlabeled(root, num_labeled, mean, std, n_classes, labels, balanced_split=True):
 
     if balanced_split:
+        # Define number of labeled samples per class
         lsamples_per_class = num_labeled // n_classes
-        labels = np.array(data.targets)
-        index_labels = []
-        index_unlabeled = []
+        labeled_indeces = []
+        unlabeled_indeces = []
+        # Get indeces of each class to make it balanced based on lsamples_per_class
         for i in range(n_classes):
-            
-        
-        
+            tmp_indeces = np.where(labels == i)[0]
+            np.random.shuffle(tmp_indeces)
+            labeled_indeces.extend(tmp_indeces[:lsamples_per_class])
+            unlabeled_indeces.extend(tmp_indeces[lsamples_per_class:])
     else:
         print("TO DO: DEFINE UNBALANCED DATA SETS")
-
-
+    
     # Transform label data -> weak transformation
     train_labeled_data = dataTransformation(root, labeled_indeces, train = True, transform = weakly_augmentation(mean, std))
     
@@ -86,7 +89,7 @@ class SSLTransform(object):
         self.strongly = transforms.Compose([
                                             transforms.RandomHorizontalFlip(),
                                             transforms.RandomCrop(size=32, padding=int(32*0.125), padding_mode='reflect'),
-                                            CTAugment(),
+                                            #CTAugment(),
                                             transforms.ToTensor(),
                                             transforms.Normalize(mean=mean, std=std)
                                         ])
@@ -97,10 +100,11 @@ class SSLTransform(object):
         return weakly_augment, strongly_augment
 
 ###### LOADING DATA ######
-def load_cifar10(root, num_labeled, labeled_batch_size, unlabeled_batch_size):
+# Load CIFAR-10
+def load_cifar10(root, num_labeled):
     # Import data and define labels
     raw_data = datasets.CIFAR10(root, train=True, download=True)
-    labels = raw_data.targets
+    labels = np.array(raw_data.targets)
 
     # Import test data
     test_data  = datasets.CIFAR10(root, train=False, transform = tensor_normalizer(mean = CIFAR10_mean, std = CIFAR10_std), download=False)
@@ -109,15 +113,18 @@ def load_cifar10(root, num_labeled, labeled_batch_size, unlabeled_batch_size):
     train_labeled_data, train_unlabeled_data = split_labeled_unlabeled(
                                                                         root,
                                                                         num_labeled,
-                                                                        labeled_batch_size,
-                                                                        unlabeled_batch_size,
                                                                         CIFAR10_mean,
                                                                         CIFAR10_std,
-                                                                        n_classes = 10
+                                                                        n_classes = 10,
+                                                                        labels = labels,
+                                                                        balanced_split=True
                                                                        )
 
     return train_labeled_data, train_unlabeled_data, test_data
 
+# Load SVHN
+
+# Load MNIST
 
 
 

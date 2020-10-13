@@ -145,3 +145,8 @@ fabric.properties
 
 # Ignore .idea entirely
 .idea
+
+# Ignore dataset
+/data/__pycache__
+/data/cifar-10-batches-py
+/data/cifar-10-python.tar.gz
