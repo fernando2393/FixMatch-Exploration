@@ -1,8 +1,5 @@
-import numpy as np
 import torch
-import torch.backends.cudnn as cudnn
-from torch.nn.functional import cross_entropy
-import torch.optim as optim
+from torch.nn import CrossEntropyLoss
 
 
 ##### TRAINING #####
@@ -18,6 +15,7 @@ def train_fixmatch(model, device, labeled_train_data, unlabeled_train_data, lear
 
     return semi_supervised_loss, supervised_loss, unsupervised_loss
 
+
 def supervised_train(model, device, labeled_train_data, B):
     loss = []
     for batch_idx, img_batch in enumerate(labeled_train_data):
@@ -25,39 +23,56 @@ def supervised_train(model, device, labeled_train_data, B):
         inputs, targets = img_batch
 
         # Make predictions
-        predictions = model(inputs.to(device))
+        predictions = model(inputs.to(device))[0]  # Item 0 -> Output. Items 1, 2, 3 -> Attention
 
         # Compute loss of batch
-        loss.extend(cross_entropy(predictions, targets.to(device), reduction='mean'))
+        criterion = CrossEntropyLoss()
+        loss_tmp = criterion(predictions, targets.to(device))
+        # loss.extend(CrossEntropyLoss(predictions, targets.to(device), reduction='mean'))
+        loss.append(loss_tmp.item())
+
+        break
 
     # Average over the labeled batch
     supervised_loss = sum(loss) / B
     return supervised_loss
 
+
 def unsupervised_train(model, device, unlabeled_train_data, unlabeled_batch_size, threshold):
     loss = []
-    for batch_idx, img_batch in enumerate(unlabeled_train_data):
+    for batch_idx, (image_batch, _) in enumerate(unlabeled_train_data):
         # Define batch images (weakly and strongly augmented) and not assing the target labels
-        weakly_augment_inputs, strongly_augment_inputs, _ = img_batch
+        weakly_augment_inputs, strongly_augment_inputs = image_batch
 
         # Assign Pseudo-labels and mask them based on threshold 
         pseudo_labels, masked_indeces = pseudo_labeling(model, weakly_augment_inputs.to(device), threshold)
 
-        # Compute predictions for strongly augmented images
-        strongly_predictions = model(strongly_augment_inputs.to(device))
+        if True not in masked_indeces:
+            loss.append(0)  # Append a 0 if no image surpassed the threshold
+        else:
+            # Compute predictions for strongly augmented images
+            strongly_predictions = model(strongly_augment_inputs.to(device))[0]
+            # Compute loss of batch
+            criterion = CrossEntropyLoss()
+            loss_tmp = criterion(strongly_predictions[masked_indeces], pseudo_labels[masked_indeces].to(device))
+            # loss.extend(CrossEntropyLoss(predictions, targets.to(device), reduction='mean'))
+            loss.append(loss_tmp.item())
+
+        break
 
         # Compute loss between pseudo-labeled images and strongly augmented images
-        masked_loss = cross_entropy(strongly_predictions, pseudo_labels, reduction='mean')[masked_indeces]
-        loss.extend(masked_loss)
+        # masked_loss = cross_entropy(strongly_predictions, pseudo_labels, reduction='mean')[masked_indeces]
+        # loss.extend(masked_loss)
         
     # Average over the unlabeled batch
     unsupervised_loss = sum(loss) / unlabeled_batch_size
     return unsupervised_loss
 
+
 def pseudo_labeling(model, weakly_augment_inputs, threshold):
     all_probs = []
     # Detach the linear prediction 
-    logits = model(weakly_augment_inputs.detach())
+    logits = model(weakly_augment_inputs.detach())[0]
 
     # Compute pseudo probabilities
     probs = torch.softmax(logits, dim=1)

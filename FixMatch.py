@@ -1,10 +1,12 @@
 import random
+import numpy as np
 import matplotlib.pyplot as plt
 import torch.backends.cudnn as cudnn
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 from data.data_loader import load_cifar10
 import torchvision
+import torch.optim as optim
 from train import *
 from exp_moving_avg import EMA
 from WideResNet_PyTorch.src import WideResNet as wrn
@@ -25,10 +27,10 @@ def set_seed(seed=42):
 def cyclic_learning_rate_with_warmup(warmup_steps, epoch, total_training_epochs):
     # If you don't achieve the number of warmup steps, don't update
     if epoch < warmup_steps:
-        new_learning_rate_multiplicative = 1
+        new_learning_rate_multiplicative = lambda x: 1
     else:  # Once you surpass the number of warmup steps,
         # you should decay they learning rate close zero in a cosine manner
-        new_learning_rate_multiplicative = np.cos(7. / 16. * np.pi * (epoch / total_training_epochs))
+        new_learning_rate_multiplicative = lambda x: np.cos(7. / 16. * np.pi * (epoch / total_training_epochs))
     # Update learning rate scheduler
     return new_learning_rate_multiplicative
 
@@ -86,7 +88,7 @@ def main():
 
     # Create Wide - ResNet based on the data set characteristics
     model = wrn.WideResNet(d=wrn_depth, k=wrn_width, n_classes=n_classes, input_features=channels,
-                           output_features=n_classes, strides=strides)
+                           output_features=16, strides=strides)
 
     # Define Stochastic Gradient Descent
     optimizer = optim.SGD(model.parameters(), lr=initial_learning_rate, momentum=momentum, nesterov=nesterov_factor)
@@ -94,8 +96,9 @@ def main():
     # Create scheduler that will take charge of warming up and performing learning rate decay
     # LambdaLR: Sets the learning rate of each parameter group to the initial lr times a given function.
     # (Pytorch documentation)
-    scheduler = LambdaLR(optimizer, lr_lambda=cyclic_learning_rate_with_warmup(warmup_steps, initial_training_epoch,
-                                                                               total_training_epochs))
+    scheduler = LambdaLR(optimizer=optimizer, lr_lambda=cyclic_learning_rate_with_warmup(warmup_steps,
+                                                                                         initial_training_epoch,
+                                                                                         total_training_epochs))
 
     # Define exponential moving avarage of the parameters with 0.999 weight decay
     exp_moving_avg = EMA(model.parameters(), decay=0.999)
@@ -107,7 +110,7 @@ def main():
     for epoch in range(total_training_epochs):
         # Initialize training
         model.to(device)
-        model.zero_grad()  # .to(device)
+        model.zero_grad()
         model.train()
 
         # Current learning rate to compute the loss combination
@@ -119,7 +122,7 @@ def main():
             device,
             labeled_train_data,
             unlabeled_train_data,
-            lr,
+            lr(1),
             B,
             unlabeled_batch_size,
             pseudo_label_threshold

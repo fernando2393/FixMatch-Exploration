@@ -130,17 +130,17 @@ class WideResNet(nn.Module):
         return self.fc(out), attention1, attention2, attention3
 
 
-if __name__ == '__main__':
-
-    # change d and k if you want to check a model other than WRN-40-2
-    d = 40
-    k = 2
-    strides = [1, 1, 2, 2]
-    net = WideResNet(d=d, k=k, n_classes=10, input_features=3, output_features=16, strides=strides)
-
-    # verify that an output is produced
-    sample_input = torch.ones(size=(1, 3, 32, 32), requires_grad=False)
-    net(sample_input)
-
-    # Summarize model
-    summary(net, input_size=(3, 32, 32))
+# if __name__ == '__main__':
+#
+#     # change d and k if you want to check a model other than WRN-40-2
+#     d = 40
+#     k = 2
+#     strides = [1, 1, 2, 2]
+#     net = WideResNet(d=d, k=k, n_classes=10, input_features=3, output_features=16, strides=strides)
+#
+#     # verify that an output is produced
+#     sample_input = torch.ones(size=(1, 3, 32, 32), requires_grad=False)
+#     net(sample_input)
+#
+#     # Summarize model
+#     summary(net, input_size=(3, 32, 32))
