@@ -24,7 +24,7 @@ def get_default_cta():
 	a. Inside get_dataflow, the function "get_cta_probe_loader" (from __init__.py in folder dataflow) is used, where another
 function "get_cta_probe_loader" from cifar10.py is applied (yes... this is inception of functions now... doesn't make any sense, it's just messing the code).
 	
-	b. Inside get_cta_probe_loader from cifar10.py, the train_dataset (from cifar10.py) is used as input. 
+	b. Inside the second get_cta_probe_loader, from cifar10.py, the train_dataset (from cifar10.py) is used as input. 
  		
 		- The class TransformedDataset (from dataflow/__init__.py) is used in order to return the transformed data. It has an __init__ and __getitem__.
 			It uses "cta_probe_transforms" (from cifar10.py) that performs the transformations to the images.
