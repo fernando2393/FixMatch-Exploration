@@ -17,11 +17,18 @@ from data.data_loader import load_cifar10
 import torchvision
 from train import *
 from exp_moving_avg import EMA
+from WideResNet_PyTorch.src import WideResNet
 
 
 ###### SET VARIABLES ######
-np.random.seed(42) # Define randomness for reproducibility for numpy
-torch.manual_seed(42) # Define randomness for reproducibility for pytorch
+def set_seed(seed=42):
+    torch.backends.cudnn.deterministic = True
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+seed = 42
+set_seed(seed)
 DATA_ROOT = './data'
 n_labeled_data = 4000 # We will train with 4000 labeled data to avoid computing many times the CTAugment
 B = 64 # B from the paper, i.e. number of labeled examples per batch. 
@@ -35,6 +42,13 @@ pseudo_label_threshold = 0.95 # Threshold to guarantee confidence on the model
 total_training_epochs = 5 # Number of training epochs, without early stopping
 initial_training_epoch = 0 # Start the training epoch from zero
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu") # Create device to perform computations in GPU (if available)
+
+###### Define WideResNet Architecture
+wrn_depth = 28
+wrn_width = 2
+n_classes = 10
+strides = [1, 1, 2, 2]
+channels = 3 # Maybe this has to be changed in order to support grayscale 
 
 ###### DEFINE FUNCTIONS ######
 def cyclic_learning_rate_with_warmup(warmup_steps, epoch, total_training_epochs):
@@ -56,7 +70,7 @@ labeled_train_data = DataLoader(labeled_dataset, sampler = RandomSampler(labeled
 unlabeled_train_data = DataLoader(unlabeled_dataset, sampler = RandomSampler(unlabeled_dataset), batch_size = unlabeled_batch_size, num_workers = 0, drop_last=True)
 test_loader = DataLoader(test_dataset, sampler = SequentialSampler(test_dataset), batch_size = B, num_workers= 0)
 
-'''def imshow(img):
+def imshow(img):
     img = img / 2 + 0.5
     npimg = img.numpy()
     plt.imshow(np.transpose(npimg, (1, 2, 0)))
@@ -71,10 +85,10 @@ for i, (images, labels) in enumerate(unlabeled_train_data):
     print('Number of image in weakly augmented ', len(images[0]))
     imshow(torchvision.utils.make_grid(images[0][0]))
     break
-    '''
+    
 
 # Create Wide - ResNet based on the data set characteristics
-model = None
+model = WideResNet(d=wrn_depth, k=wrn_width, n_classes=n_classes, input_features=channels, output_features=n_classes, strides=strides)
 
 # Define Stochastic Gradient Descent 
 optimizer = optim.SGD(model.parameters(), lr=initial_learning_rate, momentum=momentum, nesterov=nesterov_factor)
@@ -124,5 +138,7 @@ for epoch in range(total_training_epochs):
     # Stack learning process
     acc_model.extend(acc_model_tmp)
     acc_ema.extend(acc_ema_tmp)
+    print('Accuracy of the model', acc_model[-1])
+    print('Accuracy of ema', acc_ema[-1])
 
 
