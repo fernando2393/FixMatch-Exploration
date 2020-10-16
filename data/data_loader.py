@@ -11,8 +11,8 @@ from torchvision import transforms
 # Pre-defining mean and std for the datasets to reduce computational time
 CIFAR10_mean = (0.4914, 0.4822, 0.4465)
 CIFAR10_std = (0.2471, 0.2435, 0.2616)
-MNIST_mean = (0.1307)
-MNIST_std = (0.3081)
+MNIST_mean = 0.1307
+MNIST_std = 0.3081
 SVHN_mean = (0.4377, 0.4438, 0.4728)
 SVHN_std = (0.1980, 0.2010, 0.1970)
 
@@ -20,7 +20,7 @@ SVHN_std = (0.1980, 0.2010, 0.1970)
 np.random.seed(42)
 
 
-###### TRANSFORMATIONS ######
+# -----TRANSFORMATIONS----- #
 def tensor_normalizer(mean, std):
     # Normalizing the testing images
     return transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=mean, std=std)])
@@ -40,11 +40,11 @@ def weakly_augmentation(mean, std):
 
 
 def split_labeled_unlabeled(root, num_labeled, mean, std, n_classes, labels, balanced_split=True):
+    labeled_indeces = []
+    unlabeled_indeces = []
     if balanced_split:
         # Define number of labeled samples per class
         lsamples_per_class = num_labeled // n_classes
-        labeled_indeces = []
-        unlabeled_indeces = []
         # Get indeces of each class to make it balanced based on lsamples_per_class
         for i in range(n_classes):
             tmp_indeces = np.where(labels == i)[0]
@@ -53,18 +53,18 @@ def split_labeled_unlabeled(root, num_labeled, mean, std, n_classes, labels, bal
             unlabeled_indeces.extend(tmp_indeces[lsamples_per_class:])
     else:
         print("TO DO: DEFINE UNBALANCED DATA SETS")
-
+        exit(0)
     # Transform label data -> weak transformation
-    train_labeled_data = dataTransformation(root, labeled_indeces, train=True, transform=weakly_augmentation(mean, std))
+    train_labeled_data = DataTransformation(root, labeled_indeces, train=True, transform=weakly_augmentation(mean, std))
 
     # Transform unlabeled data -> weak transformationa and CTAugment
-    train_unlabeled_data = dataTransformation(root, unlabeled_indeces, train=True, transform=SSLTransform(mean, std))
+    train_unlabeled_data = DataTransformation(root, unlabeled_indeces, train=True, transform=SSLTransform(mean, std))
 
     return train_labeled_data, train_unlabeled_data
 
 
-###### CONSTRUCT DATA OBJECTS ######
-class dataTransformation(datasets.CIFAR10):
+# -----CONSTRUCT DATA OBJECTS----- #
+class DataTransformation(datasets.CIFAR10):
     def __init__(self, root, indeces, train=True, transform=None, target_transform=None, download=False):
         # Accessing CIFAR10 from torchvision
         super().__init__(root, train=train, transform=transform, target_transform=target_transform, download=download)
@@ -82,7 +82,7 @@ class dataTransformation(datasets.CIFAR10):
         return img, target
 
 
-###### UNLABELED DATA WEAKLY & STRONGLY AUGMENTATION ######
+# -----UNLABELED DATA WEAKLY & STRONGLY AUGMENTATION----- #
 class SSLTransform(object):
     def __init__(self, mean, std):
         # Weakly Data Augmentation
@@ -103,7 +103,7 @@ class SSLTransform(object):
         return weakly_augment, strongly_augment
 
 
-###### LOADING DATA ######
+# -----LOADING DATA----- #
 # Load CIFAR-10
 def load_cifar10(root, num_labeled):
     # Import data and define labels

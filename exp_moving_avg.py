@@ -1,10 +1,12 @@
 import torch
 
+
 # Based on: https://github.com/fadel/pytorch_ema/blob/master/torch_ema/ema.py
 class EMA:
     """
     Maintains (exponential) moving average of a set of parameters.
     """
+
     def __init__(self, parameters, decay, use_num_updates=True):
         """
         Args:
