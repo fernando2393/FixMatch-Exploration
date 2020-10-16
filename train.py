@@ -92,19 +92,20 @@ def test_fixmatch(ema, model, test_data, B, device):
     # Compute accuract for the model and ema
     acc_model_tmp = 0  # Creating a list might be interesting if you decide to check the performance of each batch
     acc_ema_tmp = 0
-    for batch_idx, img_batch in enumerate(test_data):
-        # Define batch images and labels
-        inputs, targets = img_batch
+    # Evalutate method for the model
+    model.eval()
+    with torch.no_grad():
+        for batch_idx, img_batch in enumerate(test_data):
+            # Define batch images and labels
+            inputs, targets = img_batch
 
-        # Evalutate method for the model 
-        model.eval()
-        logits = model(inputs.to(device))[0]
-        acc_model_tmp += evaluate(logits, targets.to(device))
+            logits = model(inputs.to(device))[0]
+            acc_model_tmp += evaluate(logits, targets.to(device))
 
-        # Evalutate method for the ema
-        ema.copy_to(model.parameters())
-        logits = model(inputs.to(device))[0]
-        acc_ema_tmp += evaluate(logits, targets.to(device))
+            # Evalutate method for the ema
+            ema.copy_to(model.parameters())
+            logits = model(inputs.to(device))[0]
+            acc_ema_tmp += evaluate(logits, targets.to(device))
 
     # Compute the accuracy average over the batches (size B) 
     acc_model = acc_model_tmp / B

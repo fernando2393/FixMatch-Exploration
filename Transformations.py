@@ -63,8 +63,10 @@ def posterize(x, level):
     return ImageOps.posterize(x, level)
 
 
-def rescale(x, scale, method):
+def rescale(x, params):
     s = x.size
+    scale = params[0]
+    method = params[1]
     scale *= 0.25
     crop = (scale * s[0], scale * s[1], s[0] * (1 - scale), s[1] * (1 - scale))
     methods = (Image.ANTIALIAS, Image.BICUBIC, Image.BILINEAR, Image.BOX, Image.HAMMING, Image.NEAREST)

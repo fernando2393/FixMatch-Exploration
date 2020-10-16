@@ -4,11 +4,14 @@ import matplotlib.pyplot as plt
 import torch.backends.cudnn as cudnn
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
-from data.data_loader import load_cifar10
+
+import CTAugment as ctaug
+from data.data_loader import *
 import torch.optim as optim
 from train import *
 from exp_moving_avg import EMA
 from WideResNet_PyTorch.src import WideResNet as wrn
+import torchvision
 
 DATA_ROOT = './data'
 
@@ -42,6 +45,14 @@ def imshow(img):
 
 
 def main():
+    # Pre-defining mean and std for the datasets to reduce computational time
+    CIFAR10_mean = (0.4914, 0.4822, 0.4465)
+    CIFAR10_std = (0.2471, 0.2435, 0.2616)
+    MNIST_mean = 0.1307
+    MNIST_std = 0.3081
+    SVHN_mean = (0.4377, 0.4438, 0.4728)
+    SVHN_std = (0.1980, 0.2010, 0.1970)
+
     set_seed(42)
     n_labeled_data = 4000  # We will train with 4000 labeled data to avoid computing many times the CTAugment
     B = 64  # B from the paper, i.e. number of labeled examples per batch.
@@ -52,7 +63,7 @@ def main():
     momentum = 0.9  # Momentum to access the Stochastic Gradient Descent
     nesterov_factor = False  # They found that the nesterov hyperparm wasn't necessary to achieve errors below 5%
     pseudo_label_threshold = 0.95  # Threshold to guarantee confidence on the model
-    total_training_epochs = 2**10  # Number of training epochs, without early stopping (assuming the model
+    total_training_epochs = 2 ** 10  # Number of training epochs, without early stopping (assuming the model
     # expects to see 2^26 images during the whole training)
     initial_training_epoch = 0  # Start the training epoch from zero
     device = torch.device(
@@ -66,18 +77,9 @@ def main():
     channels = 3  # Maybe this has to be changed in order to support grayscale
 
     # -----START MODEL----- #
-    # Query datasets
-    labeled_dataset, unlabeled_dataset, test_dataset = load_cifar10(DATA_ROOT, n_labeled_data)
-
-    # Load datasets
-    labeled_train_data = DataLoader(labeled_dataset, sampler=RandomSampler(labeled_dataset), batch_size=B,
-                                    num_workers=0,
-                                    drop_last=True)
-    unlabeled_train_data = DataLoader(unlabeled_dataset, sampler=RandomSampler(unlabeled_dataset),
-                                      batch_size=unlabeled_batch_size, num_workers=0, drop_last=True)
-    test_loader = DataLoader(test_dataset, sampler=SequentialSampler(test_dataset), batch_size=B, num_workers=0)
 
     # show images of unlabeled data
+    '''
     for i, (images, labels) in enumerate(unlabeled_train_data):
         print(i)
         print('Number of labels ', len(labels))
@@ -85,7 +87,7 @@ def main():
         print('Number of image in weakly augmented ', len(images[0]))
         # imshow(torchvision.utils.make_grid(images[0][0]))
         break
-
+    '''
     # Create Wide - ResNet based on the data set characteristics
     model = wrn.WideResNet(d=wrn_depth, k=wrn_width, n_classes=n_classes, input_features=channels,
                            output_features=16, strides=strides)
@@ -106,10 +108,40 @@ def main():
     # Analyze the training process
     acc_model = []
     acc_ema = []
+    # Query datasets
+    labeled_indeces, unlabeled_indeces, test_data = load_cifar10(DATA_ROOT, n_labeled_data)
+
+    # Define CTA augmentation
+    cta = ctaug.CTAugment(depth=2, t=0.8, ro=0.99)
 
     for epoch in range(total_training_epochs):
-        # Initialize training
+        # Apply transformations
+        labeled_dataset, unlabeled_dataset, train_label_cta = applyTransformations(DATA_ROOT,
+                                                                                   labeled_indeces,
+                                                                                   unlabeled_indeces,
+                                                                                   CIFAR10_mean,
+                                                                                   CIFAR10_std,
+                                                                                   cta)
+
+        # Load datasets
+        labeled_train_data = DataLoader(labeled_dataset, sampler=RandomSampler(labeled_dataset), batch_size=B,
+                                        num_workers=0,
+                                        drop_last=True)
+        unlabeled_train_data = DataLoader(unlabeled_dataset, sampler=RandomSampler(unlabeled_dataset),
+                                          batch_size=unlabeled_batch_size, num_workers=0, drop_last=True)
+        test_loader = DataLoader(test_data, sampler=SequentialSampler(test_data), batch_size=B, num_workers=0)
+
+        labeled_train_cta_data = DataLoader(train_label_cta, sampler=RandomSampler(train_label_cta), batch_size=n_labeled_data,
+                                            num_workers=0,
+                                            drop_last=True)
+
+        # Update of CTA
         model.to(device)
+        cta.update_CTA(model, labeled_train_cta_data, device)
+
+
+
+        # Initialize training
         model.zero_grad()
         model.train()
 
@@ -135,7 +167,7 @@ def main():
         scheduler.step()
         exp_moving_avg.update(model.parameters())
 
-        # Test and compute the accuracy for the current model and exponetial moving average
+        # Test and compute the accuracy for the current model and exponential moving average
         acc_model_tmp, acc_ema_tmp = test_fixmatch(exp_moving_avg, model, test_loader, B, device)
 
         # Stack learning process

@@ -1,12 +1,12 @@
 # Data manipulation
 import numpy as np
 from PIL import Image
-from CTAugment import CTAugment
 
 # Access CIFAR-10, MNIST and SVHN
 import torch
 from torchvision import datasets
 from torchvision import transforms
+from CTAugment import augment
 
 # Pre-defining mean and std for the datasets to reduce computational time
 CIFAR10_mean = (0.4914, 0.4822, 0.4465)
@@ -39,7 +39,20 @@ def weakly_augmentation(mean, std):
     return weak_transform
 
 
-def split_labeled_unlabeled(root, num_labeled, mean, std, n_classes, labels, balanced_split=True):
+def cta_augmentation_labeled_data(mean, std, cta):
+    # Perform weak transformation on labeled and unlabeled training images
+
+    cta_transform = transforms.Compose([
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomCrop(size=32, padding=int(32 * 0.125), padding_mode='reflect'),
+        augment(cta, True),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=mean, std=std)
+    ])
+    return cta_transform
+
+
+def split_labeled_unlabeled(num_labeled, n_classes, labels, balanced_split=True):
     labeled_indeces = []
     unlabeled_indeces = []
     if balanced_split:
@@ -51,16 +64,27 @@ def split_labeled_unlabeled(root, num_labeled, mean, std, n_classes, labels, bal
             np.random.shuffle(tmp_indeces)
             labeled_indeces.extend(tmp_indeces[:lsamples_per_class])
             unlabeled_indeces.extend(tmp_indeces[lsamples_per_class:])
+
     else:
         print("TO DO: DEFINE UNBALANCED DATA SETS")
         exit(0)
+
+    return labeled_indeces, unlabeled_indeces
+
+
+def applyTransformations(root, labeled_indeces, unlabeled_indeces, mean, std, cta):
     # Transform label data -> weak transformation
     train_labeled_data = DataTransformation(root, labeled_indeces, train=True, transform=weakly_augmentation(mean, std))
 
-    # Transform unlabeled data -> weak transformationa and CTAugment
-    train_unlabeled_data = DataTransformation(root, unlabeled_indeces, train=True, transform=SSLTransform(mean, std))
+    # Transform label data -> strong transformation (CTA)
+    train_labeled_data_cta = DataTransformation(root, labeled_indeces, train=True,
+                                                transform=cta_augmentation_labeled_data(mean, std, cta))
 
-    return train_labeled_data, train_unlabeled_data
+    # Transform unlabeled data -> weak transformationa and CTAugment
+    train_unlabeled_data = DataTransformation(root, unlabeled_indeces, train=True,
+                                              transform=SSLTransform(mean, std, cta))
+
+    return train_labeled_data, train_unlabeled_data, train_labeled_data_cta
 
 
 # -----CONSTRUCT DATA OBJECTS----- #
@@ -84,15 +108,14 @@ class DataTransformation(datasets.CIFAR10):
 
 # -----UNLABELED DATA WEAKLY & STRONGLY AUGMENTATION----- #
 class SSLTransform(object):
-    def __init__(self, mean, std):
+    def __init__(self, mean, std, cta):
         # Weakly Data Augmentation
         self.weakly = weakly_augmentation(mean, std)
-
         # Strongly Data Augmentation
         self.strongly = transforms.Compose([
             transforms.RandomHorizontalFlip(),
             transforms.RandomCrop(size=32, padding=int(32 * 0.125), padding_mode='reflect'),
-            # CTAugment(),
+            augment(cta, False),
             transforms.ToTensor(),
             transforms.Normalize(mean=mean, std=std)
         ])
@@ -115,17 +138,14 @@ def load_cifar10(root, num_labeled):
                                  download=False)
 
     # split data into labeled and unlabeled
-    train_labeled_data, train_unlabeled_data = split_labeled_unlabeled(
-        root,
+    labeled_indeces, unlabeled_indeces = split_labeled_unlabeled(
         num_labeled,
-        CIFAR10_mean,
-        CIFAR10_std,
         n_classes=10,
         labels=labels,
         balanced_split=True
     )
 
-    return train_labeled_data, train_unlabeled_data, test_data
+    return labeled_indeces, unlabeled_indeces, test_data
 
 # Load SVHN
 
