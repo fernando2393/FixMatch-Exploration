@@ -79,35 +79,34 @@ class CTAugment:
 
         return new_bins
 
+    def update_bin_weights(self, policy_val,
+                           w):  # Here w is going to be the formula from Remixmatch paper: w = 1 - 1/2L
+        # * sum(abs(p_model - p)). This measures the extent to which the model’s prediction matches the label
+        for operation, bin_val in policy_val:
+            for rate in self.rates[operation]:
+                bin_position = int(
+                    bin_val * len(rate) + 0.999)  # Selecting in which bin position we are in (e.g. if the parameter
+                # is divided into 17 bins, we are selecting which of these bins we are working with (0, 1, 2,...16)).
+                rate[bin_position] = rate[bin_position] * self.ro + w * (
+                            1 - self.ro)  # Updating the weight of the bin we selected in bin_position
 
-"""""
-    y_pred = ema_model(x)
-    y_probas = torch.softmax(y_pred, dim=1)  # (N, C)
-     y_probas is a matrix in which each row is a data point and each column is the probability of belonging to each class
-     I guess that images in row 0 should belong to class 0, images in row 1 to class 1, etc,
-     otherwise the code below does not make sense:
+    """""
+        y_pred = ema_model(x)
+        y_probas = torch.softmax(y_pred, dim=1)  # (N, C)
+         y_probas is a matrix in which each row is a data point and each column is the probability of belonging to each class
+         I guess that images in row 0 should belong to class 0, images in row 1 to class 1, etc,
+         otherwise the code below does not make sense:
 
-    if distributed:
-        for y_proba, t, policy in zip(y_probas, y, policies):
-            error = y_proba
-            error[t] -= 1
-            error = torch.abs(error).sum()
-         cta.update_rates(policy, 1.0 - 0.5 * error.item())
-"""""
-
-
-def update_bin_weights(self, policy_val, w):  # Here w is going to be the formula from Remixmatch paper: w = 1 - 1/2L
-    # * sum(abs(p_model - p)). This measures the extent to which the model’s prediction matches the label
-    for operation, bin_val in policy_val:
-        for rate in self.rates[operation]:
-            bin_position = int(
-                bin_val * len(rate) + 0.999)  # Selecting in which bin position we are in (e.g. if the parameter
-            # is divided into 17 bins, we are selecting which of these bins we are working with (0, 1, 2,...16)).
-            rate[bin_position] = rate[bin_position] * self.ro + w * (
-                        1 - self.ro)  # Updating the weight of the bin we selected in bin_position
+        if distributed:
+            for y_proba, t, policy in zip(y_probas, y, policies):
+                error = y_proba
+                error[t] -= 1
+                error = torch.abs(error).sum()
+             cta.update_rates(policy, 1.0 - 0.5 * error.item())
+    """""
 
 
-class AugmentingImages(Dataset):
+class augmentingImages(Dataset):
     def __init__(self, data, transformations):
         self.data = data
         self.transformations = transformations
