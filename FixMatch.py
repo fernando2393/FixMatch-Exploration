@@ -16,7 +16,7 @@ import torchvision
 DATA_ROOT = './data'
 
 
-# -----SET VARIABLES----- #
+# -----SET RANDOMNESS----- #
 def set_seed(seed=42):
     torch.backends.cudnn.deterministic = True
     random.seed(seed)
@@ -43,6 +43,12 @@ def imshow(img):
     plt.imshow(np.transpose(npimg, (1, 2, 0)))
     plt.show()
 
+def plot_performance(title, x_label, y_label, x_data, y_data):
+    plt.plot(x_data, y_data)
+    plt.xlabel(x_label)
+    plt.ylabel(y_label)
+    plt.title(title)
+    plt.show()
 
 def main():
     # Pre-defining mean and std for the datasets to reduce computational time
@@ -54,7 +60,10 @@ def main():
     SVHN_std = (0.1980, 0.2010, 0.1970)
 
     set_seed(42)
-    n_labeled_data = 4000  # We will train with 4000 labeled data to avoid computing many times the CTAugment
+    CB91_Blue = '#2CBDFE'
+    CB91_Green = '#47DBCD'
+    CB91_Red = '#DA6F6F'
+    n_labeled_data = 40  # We will train with 4000 labeled data to avoid computing many times the CTAugment
     B = 64  # B from the paper, i.e. number of labeled examples per batch.
     mu = 7  # Hyperparam of Fixmatch determining the relative number of unlabeled examples w.r.t. B * mu
     unlabeled_batch_size = B * mu
@@ -78,16 +87,6 @@ def main():
 
     # -----START MODEL----- #
 
-    # show images of unlabeled data
-    '''
-    for i, (images, labels) in enumerate(unlabeled_train_data):
-        print(i)
-        print('Number of labels ', len(labels))
-        print('Weakly and Strongly? ', len(images))
-        print('Number of image in weakly augmented ', len(images[0]))
-        # imshow(torchvision.utils.make_grid(images[0][0]))
-        break
-    '''
     # Create Wide - ResNet based on the data set characteristics
     model = wrn.WideResNet(d=wrn_depth, k=wrn_width, n_classes=n_classes, input_features=channels,
                            output_features=16, strides=strides)
@@ -108,6 +107,10 @@ def main():
     # Analyze the training process
     acc_model = []
     acc_ema = []
+    supervised_loss_list = []
+    unsupervised_loss_list = []
+    semi_supervised_loss_list = []
+
     # Query datasets
     labeled_indeces, unlabeled_indeces, test_data = load_cifar10(DATA_ROOT, n_labeled_data)
 
@@ -139,8 +142,6 @@ def main():
         model.to(device)
         cta.update_CTA(model, labeled_train_cta_data, device)
 
-
-
         # Initialize training
         model.zero_grad()
         model.train()
@@ -149,16 +150,15 @@ def main():
         lambda_unsupervised = 1
 
         # Train model, update weights per epoch based on the combination of labeled and unlabeled losses
-        semi_supervised_loss, supervised_loss, unsupervised_loss, supervised_loss_list, unsupervised_loss_list \
-            = train_fixmatch(model,
-                             device,
-                             labeled_train_data,
-                             unlabeled_train_data,
-                             lambda_unsupervised,
-                             B,
-                             unlabeled_batch_size,
-                             pseudo_label_threshold
-                             )
+        semi_supervised_loss, supervised_loss, unsupervised_loss = train_fixmatch(model,
+                                                                                device,
+                                                                                labeled_train_data,
+                                                                                unlabeled_train_data,
+                                                                                lambda_unsupervised,
+                                                                                B,
+                                                                                unlabeled_batch_size,
+                                                                                pseudo_label_threshold
+                                                                                )
         # Update the weights
         semi_supervised_loss.backward()
 
@@ -173,8 +173,23 @@ def main():
         # Stack learning process
         acc_model.append(acc_model_tmp)
         acc_ema.append(acc_ema_tmp)
+        semi_supervised_loss_list.append(semi_supervised_loss)
+        supervised_loss_list.append(supervised_loss)
+        unsupervised_loss_list.append(unsupervised_loss)
         print('Accuracy of the model', acc_model[-1])
         print('Accuracy of ema', acc_ema[-1])
+        if epoch == 2:
+            break
+    
+    epoch_range = range(total_training_epochs)
+    # Plot Accuracy
+    plot_performance('Model Performance', 'Epochs', 'Accuracy', acc_model, epoch_range)
+    plot_performance('EMA Performance', 'Epochs', 'Accuracy', acc_ema, epoch_range)
+
+    # Plot Losses
+    plot_performance('Semi Supervised Loss', 'Epochs', 'Loss', semi_supervised_loss_list, epoch_range)
+    plot_performance('Supervised Loss', 'Epochs', 'Loss', supervised_loss_list, epoch_range)
+    plot_performance('Unsupervised Loss', 'Epochs', 'Loss', unsupervised_loss_list, epoch_range)
 
 
 if __name__ == "__main__":

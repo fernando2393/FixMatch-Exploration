@@ -6,16 +6,16 @@ from torch.nn import CrossEntropyLoss
 def train_fixmatch(model, device, labeled_train_data, unlabeled_train_data, lambda_unsupervised, B,
                    unlabeled_batch_size, threshold):
     # Compute loss for labeled data (mean loss of images)
-    supervised_loss, supervised_loss_list = supervised_train(model, device, labeled_train_data, B)
+    supervised_loss = supervised_train(model, device, labeled_train_data, B)
 
     # Compute loss of unlabeled_data (mean loss of images)
-    unsupervised_loss, unsupervised_loss_list = unsupervised_train(model, device, unlabeled_train_data,
+    unsupervised_loss = unsupervised_train(model, device, unlabeled_train_data,
                                                                    unlabeled_batch_size, threshold)
 
     # Compute the total loss (SSL loss)
     semi_supervised_loss = supervised_loss + lambda_unsupervised * unsupervised_loss
 
-    return semi_supervised_loss, supervised_loss, unsupervised_loss, supervised_loss_list, unsupervised_loss_list
+    return semi_supervised_loss, supervised_loss, unsupervised_loss
 
 
 def supervised_train(model, device, labeled_train_data, B):
@@ -35,11 +35,12 @@ def supervised_train(model, device, labeled_train_data, B):
         loss_list.append(loss_tmp.item())
         loss += loss_tmp
 
-        break
+        if batch_idx == 2:
+            break
 
     # Average over the labeled batch
     supervised_loss = loss / B
-    return supervised_loss, loss_list
+    return supervised_loss
 
 
 def unsupervised_train(model, device, unlabeled_train_data, unlabeled_batch_size, threshold):
@@ -63,15 +64,13 @@ def unsupervised_train(model, device, unlabeled_train_data, unlabeled_batch_size
             # loss.extend(CrossEntropyLoss(predictions, targets.to(device), reduction='mean'))
             loss_list.append(loss_tmp.item())
             loss += loss_tmp
-        break
-
-        # Compute loss between pseudo-labeled images and strongly augmented images
-        # masked_loss = cross_entropy(strongly_predictions, pseudo_labels, reduction='mean')[masked_indeces]
-        # loss.extend(masked_loss)
+        
+        if batch_idx == 2:
+            break
 
     # Average over the unlabeled batch
     unsupervised_loss = loss / unlabeled_batch_size
-    return unsupervised_loss, loss_list
+    return unsupervised_loss
 
 
 def pseudo_labeling(model, weakly_augment_inputs, threshold):
