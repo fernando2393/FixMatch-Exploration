@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import torch.backends.cudnn as cudnn
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
+import time
 
 import CTAugment as ctaug
 from data.data_loader import *
@@ -28,13 +29,18 @@ def set_seed(seed=42):
 # -----DEFINE FUNCTIONS----- #
 def cyclic_learning_rate_with_warmup(warmup_steps, epoch, total_training_epochs):
     # If you don't achieve the number of warmup steps, don't update
-    if epoch < warmup_steps:
-        new_learning_rate_multiplicative = lambda x: 1
-    else:  # Once you surpass the number of warmup steps,
-        # you should decay they learning rate close zero in a cosine manner
-        new_learning_rate_multiplicative = lambda x: np.cos(7. / 16. * np.pi * (epoch / total_training_epochs))
+
+    def scheduler_function(epoch):
+        if epoch < warmup_steps:
+            return 1
+
+        else:  # Once you surpass the number of warmup steps,
+            # you should decay they learning rate close zero in a cosine manner
+            x = np.cos(7. / 16. * np.pi * (epoch / total_training_epochs))
+            return x
+
     # Update learning rate scheduler
-    return new_learning_rate_multiplicative
+    return scheduler_function
 
 
 def imshow(img):
@@ -43,11 +49,13 @@ def imshow(img):
     plt.imshow(np.transpose(npimg, (1, 2, 0)))
     plt.show()
 
+
 def plot_performance(title, x_label, y_label, x_data, y_data, color):
     plt.plot(x_data, y_data, label=title, c=color)
     plt.xlabel(x_label)
     plt.ylabel(y_label)
     plt.legend()
+
 
 def main():
     # Pre-defining mean and std for the datasets to reduce computational time
@@ -70,12 +78,11 @@ def main():
     initial_learning_rate = 0.3  # Small learning rate, which with cyclic decay will tend to zero
     momentum = 0.9  # Momentum to access the Stochastic Gradient Descent
     nesterov_factor = False  # They found that the nesterov hyperparm wasn't necessary to achieve errors below 5%
-    pseudo_label_threshold = 0.95  # Threshold to guarantee confidence on the model
+    pseudo_label_threshold = 0.3  # Threshold to guarantee confidence on the model
     total_training_epochs = 2 ** 10  # Number of training epochs, without early stopping (assuming the model
     # expects to see 2^26 images during the whole training)
     initial_training_epoch = 0  # Start the training epoch from zero
-    device = torch.device(
-        "cuda:0" if torch.cuda.is_available() else "cpu")  # Create device to perform computations in GPU (if available)
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")  # Create device to perform computations in GPU (if available)
 
     # -----Define WideResNet Architecture-----#
     wrn_depth = 28
@@ -116,7 +123,7 @@ def main():
 
     # Define CTA augmentation
     cta = ctaug.CTAugment(depth=2, t=0.8, ro=0.99)
-
+    start = time.time()
     for epoch in range(total_training_epochs):
         # Apply transformations
         labeled_dataset, unlabeled_dataset, train_label_cta = applyTransformations(DATA_ROOT,
@@ -135,7 +142,8 @@ def main():
                                           batch_size=unlabeled_batch_size, num_workers=0, drop_last=True)
         test_loader = DataLoader(test_data, sampler=SequentialSampler(test_data), batch_size=B, num_workers=0)
 
-        labeled_train_cta_data = DataLoader(train_label_cta, sampler=RandomSampler(train_label_cta), batch_size=n_labeled_data,
+        labeled_train_cta_data = DataLoader(train_label_cta, sampler=RandomSampler(train_label_cta),
+                                            batch_size=n_labeled_data,
                                             num_workers=0,
                                             drop_last=True)
 
@@ -150,15 +158,16 @@ def main():
         lambda_unsupervised = 1
 
         # Train model, update weights per epoch based on the combination of labeled and unlabeled losses
+        torch.cuda.empty_cache()
         semi_supervised_loss, supervised_loss, unsupervised_loss = train_fixmatch(model,
-                                                                                device,
-                                                                                labeled_train_data,
-                                                                                unlabeled_train_data,
-                                                                                lambda_unsupervised,
-                                                                                B,
-                                                                                unlabeled_batch_size,
-                                                                                pseudo_label_threshold
-                                                                                )
+                                                                                  device,
+                                                                                  labeled_train_data,
+                                                                                  unlabeled_train_data,
+                                                                                  lambda_unsupervised,
+                                                                                  B,
+                                                                                  unlabeled_batch_size,
+                                                                                  pseudo_label_threshold
+                                                                                  )
         # Update the weights
         semi_supervised_loss.backward()
 
@@ -178,18 +187,36 @@ def main():
         unsupervised_loss_list.append(unsupervised_loss.item())
         print('Accuracy of the model', acc_model[-1])
         print('Accuracy of ema', acc_ema[-1])
-    
-    epoch_range = range(3)
+        print('Unsupervised Loss', unsupervised_loss_list[-1])
+
+        if epoch % 10 == 0 and epoch != 0:
+            epoch_range = range(epoch + 1)
+            # Plot Accuracy
+            plot_performance('Model Performance', 'Epochs', 'Accuracy', epoch_range, acc_model, CB91_Blue)
+            plot_performance('EMA Performance', 'Epochs', 'Accuracy', epoch_range, acc_ema, CB91_Red)
+            plt.savefig('Accuracy4000.png')
+
+            # Plot Losses
+            plot_performance('Semi Supervised Loss', 'Epochs', 'Loss', epoch_range, semi_supervised_loss_list, CB91_Blue)
+            plot_performance('Supervised Loss', 'Epochs', 'Loss', epoch_range, supervised_loss_list, CB91_Green)
+            plot_performance('Unsupervised Loss', 'Epochs', 'Loss', epoch_range, unsupervised_loss_list, CB91_Red)
+            plt.savefig('Loss4000.png')
+
+    end = time.time() - start
+    print("ELAPSED TIME:" + str(end))
+    epoch_range = range(total_training_epochs)
+
     # Plot Accuracy
-    plot_performance('Model Performance', 'Epochs', 'Accuracy', epoch_range, acc_model,CB91_Blue)
-    plot_performance('EMA Performance', 'Epochs', 'Accuracy', epoch_range, acc_ema,CB91_Red)
-    plt.show()
+    plot_performance('Model Performance', 'Epochs', 'Accuracy', epoch_range, acc_model, CB91_Blue)
+    plot_performance('EMA Performance', 'Epochs', 'Accuracy', epoch_range, acc_ema, CB91_Red)
+    plt.savefig('Accuracy4000.png')
 
     # Plot Losses
     plot_performance('Semi Supervised Loss', 'Epochs', 'Loss', epoch_range, semi_supervised_loss_list, CB91_Blue)
     plot_performance('Supervised Loss', 'Epochs', 'Loss', epoch_range, supervised_loss_list, CB91_Green)
     plot_performance('Unsupervised Loss', 'Epochs', 'Loss', epoch_range, unsupervised_loss_list, CB91_Red)
-    plt.show()
+    plt.savefig('Loss4000.png')
+
 
 if __name__ == "__main__":
     main()

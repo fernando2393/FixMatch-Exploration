@@ -20,6 +20,7 @@ def train_fixmatch(model, device, labeled_train_data, unlabeled_train_data, lamb
 
 def supervised_train(model, device, labeled_train_data, B):
     loss = 0
+    n_batches = 0
     for batch_idx, img_batch in enumerate(labeled_train_data):
         # Define batch images and labels
         inputs, targets = img_batch
@@ -32,15 +33,17 @@ def supervised_train(model, device, labeled_train_data, B):
         loss_tmp = criterion(predictions, targets.long().to(device))
         # loss.extend(CrossEntropyLoss(predictions, targets.to(device), reduction='mean'))
         loss += loss_tmp
+        n_batches += 1
 
 
     # Average over the labeled batch
-    supervised_loss = loss / B
+    supervised_loss = loss / n_batches
     return supervised_loss
 
 
 def unsupervised_train(model, device, unlabeled_train_data, unlabeled_batch_size, threshold):
     loss = 0
+    n_batches = 0
     for batch_idx, (image_batch, _) in enumerate(unlabeled_train_data):
         # Define batch images (weakly and strongly augmented) and not assing the target labels
         weakly_augment_inputs, strongly_augment_inputs = image_batch
@@ -49,7 +52,7 @@ def unsupervised_train(model, device, unlabeled_train_data, unlabeled_batch_size
         pseudo_labels, masked_indeces = pseudo_labeling(model, weakly_augment_inputs.to(device), threshold)
 
         if True not in masked_indeces:
-            return torch.tensor(loss).long()# Append a 0 if no image surpassed the threshold
+            loss += torch.tensor(0.0).to(device) # Append a 0 if no image surpassed the threshold
         else:
             # Compute predictions for strongly augmented images
             strongly_predictions = model(strongly_augment_inputs.to(device))[0]
@@ -57,10 +60,10 @@ def unsupervised_train(model, device, unlabeled_train_data, unlabeled_batch_size
             criterion = CrossEntropyLoss()
             loss_tmp = criterion(strongly_predictions[masked_indeces], pseudo_labels[masked_indeces].to(device))
             loss += loss_tmp
-
+        n_batches += 1
 
     # Average over the unlabeled batch
-    unsupervised_loss = loss / unlabeled_batch_size
+    unsupervised_loss = loss / n_batches
     return unsupervised_loss
 
 
@@ -85,6 +88,7 @@ def test_fixmatch(ema, model, test_data, B, device):
     # Evalutate method for the model
     model.eval()
     with torch.no_grad():
+        n_batches = 0
         for batch_idx, img_batch in enumerate(test_data):
             # Define batch images and labels
             inputs, targets = img_batch
@@ -96,10 +100,11 @@ def test_fixmatch(ema, model, test_data, B, device):
             ema.copy_to(model.parameters())
             logits = model(inputs.to(device))[0]
             acc_ema_tmp += evaluate(logits, targets.to(device))
+            n_batches += 1
 
     # Compute the accuracy average over the batches (size B) 
-    acc_model = acc_model_tmp / B
-    acc_ema = acc_ema_tmp / B
+    acc_model = acc_model_tmp / n_batches
+    acc_ema = acc_ema_tmp / n_batches
 
     return acc_model, acc_ema
 
