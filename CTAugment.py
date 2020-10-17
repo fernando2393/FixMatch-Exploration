@@ -108,11 +108,11 @@ class CTAugment:
                 # Compute pseudo probabilities
                 probs = torch.softmax(logits, dim=1)
 
-            for prob, l, policy in zip(probs, label, self.policy_list):
-                error = prob
-                error[l] -= 1
-                error = torch.abs(error).sum()
-                self.update_bin_weights(policy, 1.0 - 0.5 * error.item())  # TODO Check for L
+                for prob, l, policy in zip(probs, label, self.policy_list):
+                    error = prob
+                    error[l] -= 1
+                    error = torch.abs(error).sum()
+                    self.update_bin_weights(policy, 1.0 - 0.5 * error.item())  # TODO Check for L
         self.policy_list = []
 
 

@@ -146,7 +146,7 @@ def main():
                              pin_memory=True)
 
     labeled_train_cta_data = DataLoader(train_label_cta, sampler=RandomSampler(train_label_cta),
-                                        batch_size=n_labeled_data,
+                                        batch_size=B,
                                         num_workers=0,
                                         drop_last=True,
                                         pin_memory=True)
