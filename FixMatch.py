@@ -5,6 +5,7 @@ import torch.backends.cudnn as cudnn
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 import time
+from tqdm import tqdm
 
 import CTAugment as ctaug
 from data.data_loader import *
@@ -72,6 +73,8 @@ def main():
     CB91_Red = '#DA6F6F'
     n_labeled_data = 250  # We will train with 4000 labeled data to avoid computing many times the CTAugment
     B = 64  # B from the paper, i.e. number of labeled examples per batch.
+    test_B = B * 4 # For speed purposes batch in test is increased
+    cta_B = B * 4 # For speed purposes batch in CTA training is increased
     mu = 7  # Hyperparam of Fixmatch determining the relative number of unlabeled examples w.r.t. B * mu
     unlabeled_batch_size = B * mu
     warmup_steps = 10  # Define number of warmup steps to avoid premature cyclic learning
@@ -142,16 +145,16 @@ def main():
     unlabeled_train_data = DataLoader(unlabeled_dataset, sampler=RandomSampler(unlabeled_dataset),
                                       batch_size=unlabeled_batch_size, num_workers=0, drop_last=True,
                                       pin_memory=True)
-    test_loader = DataLoader(test_data, sampler=SequentialSampler(test_data), batch_size=B, num_workers=0,
+    test_loader = DataLoader(test_data, sampler=SequentialSampler(test_data), batch_size=test_B, num_workers=0,
                              pin_memory=True)
 
     labeled_train_cta_data = DataLoader(train_label_cta, sampler=RandomSampler(train_label_cta),
-                                        batch_size=B,
+                                        batch_size=cta_B,
                                         num_workers=0,
                                         drop_last=True,
                                         pin_memory=True)
 
-    for epoch in range(total_training_epochs):
+    for epoch in tqdm(range(total_training_epochs)):
 
         # Update of CTA
         cta.update_CTA(model, labeled_train_cta_data, device)
