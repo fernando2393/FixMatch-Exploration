@@ -70,7 +70,7 @@ def main():
     CB91_Blue = '#2CBDFE'
     CB91_Green = 'springgreen'
     CB91_Red = '#DA6F6F'
-    n_labeled_data = 4000  # We will train with 4000 labeled data to avoid computing many times the CTAugment
+    n_labeled_data = 250  # We will train with 4000 labeled data to avoid computing many times the CTAugment
     B = 64  # B from the paper, i.e. number of labeled examples per batch.
     mu = 7  # Hyperparam of Fixmatch determining the relative number of unlabeled examples w.r.t. B * mu
     unlabeled_batch_size = B * mu
@@ -78,7 +78,7 @@ def main():
     initial_learning_rate = 0.3  # Small learning rate, which with cyclic decay will tend to zero
     momentum = 0.9  # Momentum to access the Stochastic Gradient Descent
     nesterov_factor = False  # They found that the nesterov hyperparm wasn't necessary to achieve errors below 5%
-    pseudo_label_threshold = 0.3  # Threshold to guarantee confidence on the model
+    pseudo_label_threshold = 0.95  # Threshold to guarantee confidence on the model
     total_training_epochs = 2 ** 10  # Number of training epochs, without early stopping (assuming the model
     # expects to see 2^26 images during the whole training)
     initial_training_epoch = 0  # Start the training epoch from zero
@@ -124,28 +124,34 @@ def main():
     # Define CTA augmentation
     cta = ctaug.CTAugment(depth=2, t=0.8, ro=0.99)
     start = time.time()
-    for epoch in range(total_training_epochs):
-        # Apply transformations
-        labeled_dataset, unlabeled_dataset, train_label_cta = applyTransformations(DATA_ROOT,
-                                                                                   labeled_indeces,
-                                                                                   unlabeled_indeces,
-                                                                                   CIFAR10_mean,
-                                                                                   CIFAR10_std,
-                                                                                   cta)
 
-        # Load datasets
-        labeled_train_data = DataLoader(labeled_dataset, batch_size=B,
-                                        sampler=RandomSampler(labeled_dataset),
+    # Apply transformations
+    labeled_dataset, unlabeled_dataset, train_label_cta = applyTransformations(DATA_ROOT,
+                                                                               labeled_indeces,
+                                                                               unlabeled_indeces,
+                                                                               CIFAR10_mean,
+                                                                               CIFAR10_std,
+                                                                               cta)
+
+    # Load datasets
+    labeled_train_data = DataLoader(labeled_dataset, batch_size=B,
+                                    sampler=RandomSampler(labeled_dataset),
+                                    num_workers=0,
+                                    drop_last=True,
+                                    pin_memory=True)
+    unlabeled_train_data = DataLoader(unlabeled_dataset, sampler=RandomSampler(unlabeled_dataset),
+                                      batch_size=unlabeled_batch_size, num_workers=0, drop_last=True,
+                                      pin_memory=True)
+    test_loader = DataLoader(test_data, sampler=SequentialSampler(test_data), batch_size=B, num_workers=0,
+                             pin_memory=True)
+
+    labeled_train_cta_data = DataLoader(train_label_cta, sampler=RandomSampler(train_label_cta),
+                                        batch_size=n_labeled_data,
                                         num_workers=0,
-                                        drop_last=True)
-        unlabeled_train_data = DataLoader(unlabeled_dataset, sampler=RandomSampler(unlabeled_dataset),
-                                          batch_size=unlabeled_batch_size, num_workers=0, drop_last=True)
-        test_loader = DataLoader(test_data, sampler=SequentialSampler(test_data), batch_size=B, num_workers=0)
+                                        drop_last=True,
+                                        pin_memory=True)
 
-        labeled_train_cta_data = DataLoader(train_label_cta, sampler=RandomSampler(train_label_cta),
-                                            batch_size=n_labeled_data,
-                                            num_workers=0,
-                                            drop_last=True)
+    for epoch in range(total_training_epochs):
 
         # Update of CTA
         cta.update_CTA(model, labeled_train_cta_data, device)
@@ -201,6 +207,8 @@ def main():
             plot_performance('Supervised Loss', 'Epochs', 'Loss', epoch_range, supervised_loss_list, CB91_Green)
             plot_performance('Unsupervised Loss', 'Epochs', 'Loss', epoch_range, unsupervised_loss_list, CB91_Red)
             plt.savefig('Loss4000.png')
+
+        torch.cuda.empty_cache()
 
     end = time.time() - start
     print("ELAPSED TIME:" + str(end))
