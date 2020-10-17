@@ -43,12 +43,11 @@ def imshow(img):
     plt.imshow(np.transpose(npimg, (1, 2, 0)))
     plt.show()
 
-def plot_performance(title, x_label, y_label, x_data, y_data):
-    plt.plot(x_data, y_data)
+def plot_performance(title, x_label, y_label, x_data, y_data, color):
+    plt.plot(x_data, y_data, label=title, c=color)
     plt.xlabel(x_label)
     plt.ylabel(y_label)
-    plt.title(title)
-    plt.show()
+    plt.legend()
 
 def main():
     # Pre-defining mean and std for the datasets to reduce computational time
@@ -61,9 +60,9 @@ def main():
 
     set_seed(42)
     CB91_Blue = '#2CBDFE'
-    CB91_Green = '#47DBCD'
+    CB91_Green = 'springgreen'
     CB91_Red = '#DA6F6F'
-    n_labeled_data = 40  # We will train with 4000 labeled data to avoid computing many times the CTAugment
+    n_labeled_data = 4000  # We will train with 4000 labeled data to avoid computing many times the CTAugment
     B = 64  # B from the paper, i.e. number of labeled examples per batch.
     mu = 7  # Hyperparam of Fixmatch determining the relative number of unlabeled examples w.r.t. B * mu
     unlabeled_batch_size = B * mu
@@ -90,6 +89,7 @@ def main():
     # Create Wide - ResNet based on the data set characteristics
     model = wrn.WideResNet(d=wrn_depth, k=wrn_width, n_classes=n_classes, input_features=channels,
                            output_features=16, strides=strides)
+    model.to(device)
 
     # Define Stochastic Gradient Descent
     optimizer = optim.SGD(model.parameters(), lr=initial_learning_rate, momentum=momentum, nesterov=nesterov_factor)
@@ -127,7 +127,8 @@ def main():
                                                                                    cta)
 
         # Load datasets
-        labeled_train_data = DataLoader(labeled_dataset, sampler=RandomSampler(labeled_dataset), batch_size=B,
+        labeled_train_data = DataLoader(labeled_dataset, batch_size=B,
+                                        sampler=RandomSampler(labeled_dataset),
                                         num_workers=0,
                                         drop_last=True)
         unlabeled_train_data = DataLoader(unlabeled_dataset, sampler=RandomSampler(unlabeled_dataset),
@@ -139,7 +140,6 @@ def main():
                                             drop_last=True)
 
         # Update of CTA
-        model.to(device)
         cta.update_CTA(model, labeled_train_cta_data, device)
 
         # Initialize training
@@ -171,26 +171,25 @@ def main():
         acc_model_tmp, acc_ema_tmp = test_fixmatch(exp_moving_avg, model, test_loader, B, device)
 
         # Stack learning process
-        acc_model.append(acc_model_tmp)
-        acc_ema.append(acc_ema_tmp)
-        semi_supervised_loss_list.append(semi_supervised_loss)
-        supervised_loss_list.append(supervised_loss)
-        unsupervised_loss_list.append(unsupervised_loss)
+        acc_model.append(acc_model_tmp.item())
+        acc_ema.append(acc_ema_tmp.item())
+        semi_supervised_loss_list.append(semi_supervised_loss.item())
+        supervised_loss_list.append(supervised_loss.item())
+        unsupervised_loss_list.append(unsupervised_loss.item())
         print('Accuracy of the model', acc_model[-1])
         print('Accuracy of ema', acc_ema[-1])
-        if epoch == 2:
-            break
     
-    epoch_range = range(total_training_epochs)
+    epoch_range = range(3)
     # Plot Accuracy
-    plot_performance('Model Performance', 'Epochs', 'Accuracy', acc_model, epoch_range)
-    plot_performance('EMA Performance', 'Epochs', 'Accuracy', acc_ema, epoch_range)
+    plot_performance('Model Performance', 'Epochs', 'Accuracy', epoch_range, acc_model,CB91_Blue)
+    plot_performance('EMA Performance', 'Epochs', 'Accuracy', epoch_range, acc_ema,CB91_Red)
+    plt.show()
 
     # Plot Losses
-    plot_performance('Semi Supervised Loss', 'Epochs', 'Loss', semi_supervised_loss_list, epoch_range)
-    plot_performance('Supervised Loss', 'Epochs', 'Loss', supervised_loss_list, epoch_range)
-    plot_performance('Unsupervised Loss', 'Epochs', 'Loss', unsupervised_loss_list, epoch_range)
-
+    plot_performance('Semi Supervised Loss', 'Epochs', 'Loss', epoch_range, semi_supervised_loss_list, CB91_Blue)
+    plot_performance('Supervised Loss', 'Epochs', 'Loss', epoch_range, supervised_loss_list, CB91_Green)
+    plot_performance('Unsupervised Loss', 'Epochs', 'Loss', epoch_range, unsupervised_loss_list, CB91_Red)
+    plt.show()
 
 if __name__ == "__main__":
     main()

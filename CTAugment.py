@@ -93,8 +93,7 @@ class CTAugment:
         # * sum(abs(p_model - p)). This measures the extent to which the model’s prediction matches the label
         for operation, bin_vals in policy_val:
             for rate, bin_val in zip(self.rates[operation], bin_vals):
-                bin_position = int(
-                    bin_val * len(rate) + 0.999)  # Selecting in which bin position we are in (e.g. if the parameter
+                bin_position = max(int(bin_val*len(rate) - 0.001), 0)  # Selecting in which bin position we are in (e.g. if the parameter
                 # is divided into 17 bins, we are selecting which of these bins we are working with (0, 1, 2,...16)).
                 rate[bin_position] = rate[bin_position] * self.ro + w * (
                         1 - self.ro)  # Updating the weight of the bin we selected in bin_position
@@ -113,7 +112,7 @@ class CTAugment:
                 error = prob
                 error[l] -= 1
                 error = torch.abs(error).sum()
-            self.update_bin_weights(policy, 1.0 - 0.5 * error.item())  # TODO Check for L
+                self.update_bin_weights(policy, 1.0 - 0.5 * error.item())  # TODO Check for L
         self.policy_list = []
 
 
