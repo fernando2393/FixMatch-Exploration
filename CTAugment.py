@@ -113,9 +113,7 @@ class CTAugment:
                 error = prob
                 error[l] -= 1
                 error = torch.abs(error).sum()
-
             self.update_bin_weights(policy, 1.0 - 0.5 * error.item())  # TODO Check for L
-
         self.policy_list = []
 
 
