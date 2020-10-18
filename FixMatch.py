@@ -177,13 +177,15 @@ def main():
         supervised_loss_list_tmp = []
         unsupervised_loss_list_tmp = []
 
+        # Initialize epoch training
+        model.train()
+
         # Train per batch
         full_train_data = zip(labeled_train_data, unlabeled_train_data)
         for batch_idx, ((labeled_image_batch, labeled_targets), (unlabeled_image_batch, unlabeled_targets)) in enumerate(full_train_data):
-
-            # Initialize training
-            model.zero_grad()
-            model.train()
+            
+            # We set the gradients to zero
+            optimizer.zero_grad()
 
             # Current learning rate to compute the loss combination
             lambda_unsupervised = 1
@@ -201,16 +203,20 @@ def main():
             # Update the weights
             semi_supervised_loss.backward()
 
-            # Update learning rate, optimizer (SGD), and exponential moving average parameters
+            # Update optimizer (SGD)
             optimizer.step()
-            scheduler.step()
+
+            # Update EMA parameters
             exp_moving_avg.update(model.parameters())
 
             # Stack learning process
             semi_supervised_loss_list_tmp.append(semi_supervised_loss.item())
             supervised_loss_list_tmp.append(supervised_loss.item())
             unsupervised_loss_list_tmp.append(unsupervised_loss.item())
-            print('Total Loss', semi_supervised_loss_list_tmp[-1])
+            break
+        
+        # Update learning rate
+        scheduler.step()
         
         # Test and compute the accuracy for the current model and exponential moving average
         acc_model_tmp, acc_ema_tmp = test_fixmatch(exp_moving_avg, model, test_loader, B, device)
@@ -229,13 +235,13 @@ def main():
             # Plot Accuracy
             plot_performance('Model Performance', 'Epochs', 'Accuracy', epoch_range, acc_model, CB91_Blue)
             plot_performance('EMA Performance', 'Epochs', 'Accuracy', epoch_range, acc_ema, CB91_Red)
-            plt.savefig('Accuracy4000.png')
+            plt.savefig('Accuracy250.png')
 
             # Plot Losses
             plot_performance('Semi Supervised Loss', 'Epochs', 'Loss', epoch_range, semi_supervised_loss_list, CB91_Blue)
             plot_performance('Supervised Loss', 'Epochs', 'Loss', epoch_range, supervised_loss_list, CB91_Green)
             plot_performance('Unsupervised Loss', 'Epochs', 'Loss', epoch_range, unsupervised_loss_list, CB91_Red)
-            plt.savefig('Loss4000.png')
+            plt.savefig('Loss250.png')
 
 
     end = time.time() - start
@@ -245,13 +251,13 @@ def main():
     # Plot Accuracy
     plot_performance('Model Performance', 'Epochs', 'Accuracy', epoch_range, acc_model, CB91_Blue)
     plot_performance('EMA Performance', 'Epochs', 'Accuracy', epoch_range, acc_ema, CB91_Red)
-    plt.savefig('Accuracy4000.png')
+    plt.savefig('Accuracy250.png')
 
     # Plot Losses
     plot_performance('Semi Supervised Loss', 'Epochs', 'Loss', epoch_range, semi_supervised_loss_list, CB91_Blue)
     plot_performance('Supervised Loss', 'Epochs', 'Loss', epoch_range, supervised_loss_list, CB91_Green)
     plot_performance('Unsupervised Loss', 'Epochs', 'Loss', epoch_range, unsupervised_loss_list, CB91_Red)
-    plt.savefig('Loss4000.png')
+    plt.savefig('Loss250.png')
 
 
 if __name__ == "__main__":
