@@ -172,8 +172,6 @@ def main():
         cta.update_CTA(model, labeled_train_cta_data, device)
         
         # Declare lists of training
-        acc_model_list_tmp = []
-        acc_ema_list_tmp = []
         semi_supervised_loss_list_tmp = []
         supervised_loss_list_tmp = []
         unsupervised_loss_list_tmp = []
@@ -207,18 +205,15 @@ def main():
             scheduler.step()
             exp_moving_avg.update(model.parameters())
 
-            # Test and compute the accuracy for the current model and exponential moving average
-            acc_model_tmp, acc_ema_tmp = test_fixmatch(exp_moving_avg, model, test_loader, B, device)
-
             # Stack learning process
-            acc_model_list_tmp.append(acc_model_tmp.item())
-            acc_ema_list_tmp.append(acc_ema_tmp.item())
             semi_supervised_loss_list_tmp.append(semi_supervised_loss.item())
             supervised_loss_list_tmp.append(supervised_loss.item())
             unsupervised_loss_list_tmp.append(unsupervised_loss.item())
-            
-        acc_model.append(np.mean(acc_model_list_tmp))
-        acc_ema.append(np.mean(acc_ema_list_tmp))
+        
+        # Test and compute the accuracy for the current model and exponential moving average
+        acc_model_tmp, acc_ema_tmp = test_fixmatch(exp_moving_avg, model, test_loader, B, device)
+        acc_model.append(np.mean(acc_model_tmp))
+        acc_ema.append(np.mean(acc_ema_tmp))
         semi_supervised_loss_list.append(np.mean(semi_supervised_loss_list_tmp))
         supervised_loss_list.append(np.mean(supervised_loss_list_tmp))
         unsupervised_loss_list.append(np.mean(unsupervised_loss_list_tmp))
