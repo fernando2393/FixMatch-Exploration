@@ -73,8 +73,6 @@ def main():
     CB91_Red = '#DA6F6F'
     n_labeled_data = 250  # We will train with 4000 labeled data to avoid computing many times the CTAugment
     B = 64  # B from the paper, i.e. number of labeled examples per batch.
-    test_B = B * 4 # For speed purposes batch in test is increased
-    cta_B = B * 4 # For speed purposes batch in CTA training is increased
     mu = 7  # Hyperparam of Fixmatch determining the relative number of unlabeled examples w.r.t. B * mu
     unlabeled_batch_size = B * mu
     warmup_steps = 10  # Define number of warmup steps to avoid premature cyclic learning
@@ -124,13 +122,23 @@ def main():
     # Query datasets
     labeled_indeces, unlabeled_indeces, test_data = load_cifar10(DATA_ROOT, n_labeled_data)
 
+    # Reshape indeces to have the same number of batches
+    n_unlabeled_images = len(unlabeled_indeces) # CIFAR - 49750 unlabeled for 250 labeled
+    n_complete_batches = (n_unlabeled_images // unlabeled_batch_size) # Number of complete batches 111
+    n_images_in_complete_batches = n_complete_batches * B # 7104
+    n_labeles_times = (n_images_in_complete_batches // n_labeled_data) # 28
+    reminder = (n_images_in_complete_batches % n_labeled_data) + B # 104 + batch size
+    labeled_indeces_extension = []
+    labeled_indeces_extension.extend(labeled_indeces * n_labeles_times)
+    labeled_indeces_extension.extend(labeled_indeces[:reminder])
+
     # Define CTA augmentation
     cta = ctaug.CTAugment(depth=2, t=0.8, ro=0.99)
     start = time.time()
 
     # Apply transformations
     labeled_dataset, unlabeled_dataset, train_label_cta = applyTransformations(DATA_ROOT,
-                                                                               labeled_indeces,
+                                                                               labeled_indeces_extension,
                                                                                unlabeled_indeces,
                                                                                CIFAR10_mean,
                                                                                CIFAR10_std,
@@ -138,65 +146,85 @@ def main():
 
     # Load datasets
     labeled_train_data = DataLoader(labeled_dataset, batch_size=B,
-                                    sampler=RandomSampler(labeled_dataset),
+                                    sampler=SequentialSampler(labeled_dataset),
                                     num_workers=0,
                                     drop_last=True,
                                     pin_memory=True)
+
     unlabeled_train_data = DataLoader(unlabeled_dataset, sampler=RandomSampler(unlabeled_dataset),
-                                      batch_size=unlabeled_batch_size, num_workers=0, drop_last=True,
-                                      pin_memory=True)
-    test_loader = DataLoader(test_data, sampler=SequentialSampler(test_data), batch_size=test_B, num_workers=0,
+                                      batch_size=unlabeled_batch_size, num_workers=0,
+                                      drop_last=True, pin_memory=True)
+
+    test_loader = DataLoader(test_data, sampler=SequentialSampler(test_data),
+                             batch_size=B, num_workers=0,
                              pin_memory=True)
 
     labeled_train_cta_data = DataLoader(train_label_cta, sampler=RandomSampler(train_label_cta),
-                                        batch_size=cta_B,
+                                        batch_size=B,
                                         num_workers=0,
                                         drop_last=True,
                                         pin_memory=True)
 
     for epoch in tqdm(range(total_training_epochs)):
+        print('TRAINING epoch', epoch + 1)
 
         # Update of CTA
         cta.update_CTA(model, labeled_train_cta_data, device)
+        
+        # Declare lists of training
+        acc_model_list_tmp = []
+        acc_ema_list_tmp = []
+        semi_supervised_loss_list_tmp = []
+        supervised_loss_list_tmp = []
+        unsupervised_loss_list_tmp = []
 
-        # Initialize training
-        model.zero_grad()
-        model.train()
+        # Train per batch
+        full_train_data = zip(labeled_train_data, unlabeled_train_data)
+        for batch_idx, ((labeled_image_batch, labeled_targets), (unlabeled_image_batch, _)) in enumerate(full_train_data):
+            # Initialize training
+            model.zero_grad()
+            model.train()
 
-        # Current learning rate to compute the loss combination
-        lambda_unsupervised = 1
+            # Current learning rate to compute the loss combination
+            lambda_unsupervised = 1
 
-        # Train model, update weights per epoch based on the combination of labeled and unlabeled losses
-        torch.cuda.empty_cache()
-        semi_supervised_loss, supervised_loss, unsupervised_loss = train_fixmatch(model,
-                                                                                  device,
-                                                                                  labeled_train_data,
-                                                                                  unlabeled_train_data,
-                                                                                  lambda_unsupervised,
-                                                                                  B,
-                                                                                  unlabeled_batch_size,
-                                                                                  pseudo_label_threshold
-                                                                                  )
-        # Update the weights
-        semi_supervised_loss.backward()
+            # Train model, update weights per epoch based on the combination of labeled and unlabeled losses
+            semi_supervised_loss, supervised_loss, unsupervised_loss = train_fixmatch(model,
+                                                                                    device,
+                                                                                    labeled_image_batch,
+                                                                                    labeled_targets,
+                                                                                    unlabeled_image_batch,
+                                                                                    lambda_unsupervised,
+                                                                                    pseudo_label_threshold
+                                                                                    )
+            
+            # Update the weights
+            semi_supervised_loss.backward()
 
-        # Update learning rate, optimizer (SGD), and exponential moving average parameters
-        optimizer.step()
-        scheduler.step()
-        exp_moving_avg.update(model.parameters())
+            # Update learning rate, optimizer (SGD), and exponential moving average parameters
+            optimizer.step()
+            scheduler.step()
+            exp_moving_avg.update(model.parameters())
 
-        # Test and compute the accuracy for the current model and exponential moving average
-        acc_model_tmp, acc_ema_tmp = test_fixmatch(exp_moving_avg, model, test_loader, B, device)
+            # Test and compute the accuracy for the current model and exponential moving average
+            acc_model_tmp, acc_ema_tmp = test_fixmatch(exp_moving_avg, model, test_loader, B, device)
 
-        # Stack learning process
-        acc_model.append(acc_model_tmp.item())
-        acc_ema.append(acc_ema_tmp.item())
-        semi_supervised_loss_list.append(semi_supervised_loss.item())
-        supervised_loss_list.append(supervised_loss.item())
-        unsupervised_loss_list.append(unsupervised_loss.item())
+            # Stack learning process
+            acc_model_list_tmp.append(acc_model_tmp.item())
+            acc_ema_list_tmp.append(acc_ema_tmp.item())
+            semi_supervised_loss_list_tmp.append(semi_supervised_loss.item())
+            supervised_loss_list_tmp.append(supervised_loss.item())
+            unsupervised_loss_list_tmp.append(unsupervised_loss.item())
+            
+        acc_model.append(np.mean(acc_model_list_tmp))
+        acc_ema.append(np.mean(acc_ema_list_tmp))
+        semi_supervised_loss_list.append(np.mean(semi_supervised_loss_list_tmp))
+        supervised_loss_list.append(np.mean(supervised_loss_list_tmp))
+        unsupervised_loss_list.append(np.mean(unsupervised_loss_list_tmp))
         print('Accuracy of the model', acc_model[-1])
         print('Accuracy of ema', acc_ema[-1])
         print('Unsupervised Loss', unsupervised_loss_list[-1])
+
 
         if epoch % 10 == 0 and epoch != 0:
             epoch_range = range(epoch + 1)
@@ -211,7 +239,6 @@ def main():
             plot_performance('Unsupervised Loss', 'Epochs', 'Loss', epoch_range, unsupervised_loss_list, CB91_Red)
             plt.savefig('Loss4000.png')
 
-        torch.cuda.empty_cache()
 
     end = time.time() - start
     print("ELAPSED TIME:" + str(end))

@@ -1,16 +1,13 @@
 import torch
 from torch.nn import CrossEntropyLoss
 
-
 # -----TRAINING----- #
-def train_fixmatch(model, device, labeled_train_data, unlabeled_train_data, lambda_unsupervised, B,
-                   unlabeled_batch_size, threshold):
+def train_fixmatch(model, device, labeled_image_batch, labeled_targets_batch, unlabeled_image_batch, lambda_unsupervised, threshold):
     # Compute loss for labeled data (mean loss of images)
-    supervised_loss = supervised_train(model, device, labeled_train_data, B)
+    supervised_loss = supervised_train(model, device, labeled_image_batch, labeled_targets_batch)
 
     # Compute loss of unlabeled_data (mean loss of images)
-    unsupervised_loss = unsupervised_train(model, device, unlabeled_train_data,
-                                                                   unlabeled_batch_size, threshold)
+    unsupervised_loss = unsupervised_train(model, device, unlabeled_image_batch, threshold)
 
     # Compute the total loss (SSL loss)
     semi_supervised_loss = supervised_loss + lambda_unsupervised * unsupervised_loss
@@ -18,52 +15,34 @@ def train_fixmatch(model, device, labeled_train_data, unlabeled_train_data, lamb
     return semi_supervised_loss, supervised_loss, unsupervised_loss
 
 
-def supervised_train(model, device, labeled_train_data, B):
-    loss = 0
-    n_batches = 0
-    for batch_idx, img_batch in enumerate(labeled_train_data):
-        # Define batch images and labels
-        inputs, targets = img_batch
+def supervised_train(model, device, inputs, targets):
 
-        # Make predictions
-        predictions = model(inputs.to(device))[0]  # Item 0 -> Output. Items 1, 2, 3 -> Attention
+    # Make predictions
+    predictions = model(inputs.to(device))[0]  # Item 0 -> Output. Items 1, 2, 3 -> Attention
 
-        # Compute loss of batch
-        criterion = CrossEntropyLoss()
-        loss_tmp = criterion(predictions, targets.long().to(device))
-        # loss.extend(CrossEntropyLoss(predictions, targets.to(device), reduction='mean'))
-        loss += loss_tmp
-        n_batches += 1
+    # Compute loss of batch
+    criterion = CrossEntropyLoss()
+    supervised_loss = criterion(predictions, targets.long().to(device))
 
-
-    # Average over the labeled batch
-    supervised_loss = loss / n_batches
     return supervised_loss
 
 
-def unsupervised_train(model, device, unlabeled_train_data, unlabeled_batch_size, threshold):
-    loss = 0
-    n_batches = 0
-    for batch_idx, (image_batch, _) in enumerate(unlabeled_train_data):
-        # Define batch images (weakly and strongly augmented) and not assing the target labels
-        weakly_augment_inputs, strongly_augment_inputs = image_batch
+def unsupervised_train(model, device, unlabeled_image_batch, threshold):
+    # Define batch images (weakly and strongly augmented) and not assing the target labels
+    weakly_augment_inputs, strongly_augment_inputs = unlabeled_image_batch
 
-        # Assign Pseudo-labels and mask them based on threshold 
-        pseudo_labels, masked_indeces = pseudo_labeling(model, weakly_augment_inputs.to(device), threshold)
+    # Assign Pseudo-labels and mask them based on threshold
+    pseudo_labels, masked_indeces = pseudo_labeling(model, weakly_augment_inputs.to(device), threshold)
 
-        if True not in masked_indeces:
-            loss += torch.tensor(0.0).to(device) # Append a 0 if no image surpassed the threshold
-        else:
-            # Compute predictions for strongly augmented images
-            strongly_predictions = model(strongly_augment_inputs.to(device))[0]
-            # Compute loss of batch
-            criterion = CrossEntropyLoss()
-            loss_tmp = criterion(strongly_predictions[masked_indeces], pseudo_labels[masked_indeces].to(device))
-            loss += loss_tmp
-        n_batches += 1
+    if True not in masked_indeces:
+        unsupervised_loss = torch.tensor(0.0) # 0 if no image surpassed the threshold
+    else:
+        # Compute predictions for strongly augmented images
+        strongly_predictions = model(strongly_augment_inputs.to(device))[0]
+        # Compute loss of batch
+        criterion = CrossEntropyLoss()
+        unsupervised_loss = criterion(strongly_predictions[masked_indeces], pseudo_labels[masked_indeces].to(device))
 
-    # Average over the unlabeled batch
-    unsupervised_loss = loss / n_batches
     return unsupervised_loss
 
 
