@@ -220,8 +220,8 @@ def main():
         
         # Test and compute the accuracy for the current model and exponential moving average
         acc_model_tmp, acc_ema_tmp = test_fixmatch(exp_moving_avg, model, test_loader, B, device)
-        acc_model.append(acc_model_tmp)
-        acc_ema.append(acc_ema_tmp)
+        acc_model.append(acc_model_tmp.item())
+        acc_ema.append(acc_ema_tmp.item())
         semi_supervised_loss_list.append(np.mean(semi_supervised_loss_list_tmp))
         supervised_loss_list.append(np.mean(supervised_loss_list_tmp))
         unsupervised_loss_list.append(np.mean(unsupervised_loss_list_tmp))
