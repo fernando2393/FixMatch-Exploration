@@ -213,7 +213,6 @@ def main():
             semi_supervised_loss_list_tmp.append(semi_supervised_loss.item())
             supervised_loss_list_tmp.append(supervised_loss.item())
             unsupervised_loss_list_tmp.append(unsupervised_loss.item())
-            break
         
         # Update learning rate
         scheduler.step()
