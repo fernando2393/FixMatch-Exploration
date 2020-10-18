@@ -3,6 +3,7 @@ from torch.nn import CrossEntropyLoss
 
 # -----TRAINING----- #
 def train_fixmatch(model, device, labeled_image_batch, labeled_targets_batch, unlabeled_image_batch, lambda_unsupervised, threshold):
+
     # Compute loss for labeled data (mean loss of images)
     supervised_loss = supervised_train(model, device, labeled_image_batch, labeled_targets_batch)
 

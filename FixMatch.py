@@ -146,7 +146,7 @@ def main():
 
     # Load datasets
     labeled_train_data = DataLoader(labeled_dataset, batch_size=B,
-                                    sampler=SequentialSampler(labeled_dataset),
+                                    sampler=RandomSampler(labeled_dataset),
                                     num_workers=0,
                                     drop_last=True,
                                     pin_memory=True)
@@ -180,7 +180,8 @@ def main():
 
         # Train per batch
         full_train_data = zip(labeled_train_data, unlabeled_train_data)
-        for batch_idx, ((labeled_image_batch, labeled_targets), (unlabeled_image_batch, _)) in enumerate(full_train_data):
+        for batch_idx, ((labeled_image_batch, labeled_targets), (unlabeled_image_batch, unlabeled_targets)) in enumerate(full_train_data):
+
             # Initialize training
             model.zero_grad()
             model.train()
