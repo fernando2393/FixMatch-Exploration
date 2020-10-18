@@ -72,9 +72,9 @@ def split_labeled_unlabeled(num_labeled, n_classes, labels, balanced_split=True)
     return labeled_indeces, unlabeled_indeces
 
 
-def applyTransformations(root, labeled_indeces, unlabeled_indeces, mean, std, cta):
+def applyTransformations(root, labeled_indeces_extension, labeled_indeces ,unlabeled_indeces, mean, std, cta):
     # Transform label data -> weak transformation
-    train_labeled_data = DataTransformation(root, labeled_indeces, train=True, transform=weakly_augmentation(mean, std))
+    train_labeled_data = DataTransformation(root, labeled_indeces_extension, train=True, transform=weakly_augmentation(mean, std))
 
     # Transform label data -> strong transformation (CTA)
     train_labeled_data_cta = DataTransformation(root, labeled_indeces, train=True,
