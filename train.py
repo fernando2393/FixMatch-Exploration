@@ -24,6 +24,9 @@ def supervised_train(model, device, inputs, targets):
     # Compute loss of batch
     criterion = CrossEntropyLoss()
     supervised_loss = criterion(predictions, targets.long().to(device))
+    
+    # Free space
+    del predictions
 
     return supervised_loss
 
@@ -59,8 +62,11 @@ def pseudo_labeling(model, weakly_augment_inputs, threshold):
     # Compute the probabilities
     probs = torch.softmax(logits.detach(), dim=1)
 
+    # Free space
+    del logits
+
     # One hot encode pseudo labels and define mask for those that surpassed the threshold
-    scores, pseudo_labels = torch.max(logits, dim=1)
+    scores, pseudo_labels = torch.max(probs, dim=1)
     masked_indeces = (scores >= threshold)
     return pseudo_labels, masked_indeces
 
@@ -83,6 +89,9 @@ def test_fixmatch(ema, model, test_data, B, device):
             logits = model(inputs.to(device))[0]
             acc_ema_tmp += evaluate(logits, targets.to(device))
             n_batches += 1
+
+            # Free space
+            del logits
 
     # Compute the accuracy average over the batches (size B)
     acc_ema = acc_ema_tmp / n_batches
