@@ -97,12 +97,13 @@ def main():
     # Create Wide - ResNet based on the data set characteristics
     model = wrn.WideResNet(d=wrn_depth, k=wrn_width, n_classes=n_classes, input_features=channels,
                            output_features=16, strides=strides)
-    
-    ema = wrn.WideResNet(d=wrn_depth, k=wrn_width, n_classes=n_classes, input_features=channels,
-                           output_features=16, strides=strides)
+
+    ema = EMA(ema_decay, device)
+    for name, param in model.named_parameters():
+        if param.requires_grad:
+            ema.register(name, param.data)
 
     model.to(device)
-    ema.to(device)
 
     # Analyze the training process
     acc_ema = []
@@ -177,7 +178,7 @@ def main():
 
         # Update of CTA
         cta.update_CTA(model, labeled_train_cta_data, device)
-        
+
         # Declare lists of training
         semi_supervised_loss_list_tmp = []
         supervised_loss_list_tmp = []
@@ -190,7 +191,7 @@ def main():
         # Train per batch
         full_train_data = zip(labeled_train_data, unlabeled_train_data)
         for batch_idx, ((labeled_image_batch, labeled_targets), (unlabeled_image_batch, unlabeled_targets)) in enumerate(full_train_data):
-            
+
             # We set the gradients to zero
             optimizer.zero_grad()
 
@@ -206,31 +207,27 @@ def main():
                                                                                     lambda_unsupervised,
                                                                                     pseudo_label_threshold
                                                                                     )
-            
+
             # Update the weights
             semi_supervised_loss.backward()
 
             # Update optimizer (SGD)
             optimizer.step()
 
-            # Update EMA parameters
-            with torch.no_grad():
-              # Update EMA parameters
-              for param_train, param_ema in zip(model.parameters(), ema.parameters()):
-                  param_ema.copy_(param_ema * ema_decay + param_train.detach() * (1-ema_decay))
-              
-              for buffer_train, buffer_ema in zip(model.buffers(), ema.buffers()):
-                  buffer_ema.copy_(buffer_train)
-
             # Stack learning process
             semi_supervised_loss_list_tmp.append(semi_supervised_loss.item())
             supervised_loss_list_tmp.append(supervised_loss.item())
             unsupervised_loss_list_tmp.append(unsupervised_loss.item())
             unsupervised_ratio_tmp.append(unsupervised_ratio)
-        
+
             # Update learning rate
             scheduler.step()
-        
+
+            # Update EMA parameters
+            for name, param in model.named_parameters():
+                if param.requires_grad:
+                    param.data = ema(name, param.data)
+
         # Test and compute the accuracy for the current model and exponential moving average
 
         semi_supervised_loss_list.append(np.mean(semi_supervised_loss_list_tmp))
@@ -240,7 +237,7 @@ def main():
         print('Unsupervised Loss', unsupervised_loss_list[-1])
         print('Unsupervised ratio', unsupervised_ratio_list[-1])
 
-        acc_ema_tmp = test_fixmatch(ema, test_loader, B, device)
+        acc_ema_tmp = test_fixmatch(model, test_loader, B, device)
         acc_ema.append(acc_ema_tmp.item())
         print('Accuracy of ema', acc_ema[-1])
         # Save best model
@@ -258,7 +255,7 @@ def main():
         if epoch % 10 == 0 and epoch != 0:
             epoch_range = range(epoch + 1)
             # Plot Accuracy
-            plot_performance('EMA Performance', 'Epochs', 'Accuracy', epoch_range, acc_ema, CB91_Red)
+            plot_performance('EMA Performance', 'Epochs', 'Accuracy', epoch_range, acc_ema, CB91_Blue)
             plt.savefig('Accuracy250.png')
             plt.close()
 
