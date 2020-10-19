@@ -97,11 +97,12 @@ def main():
     # Create Wide - ResNet based on the data set characteristics
     model = wrn.WideResNet(d=wrn_depth, k=wrn_width, n_classes=n_classes, input_features=channels,
                            output_features=16, strides=strides)
+    
+    ema = wrn.WideResNet(d=wrn_depth, k=wrn_width, n_classes=n_classes, input_features=channels,
+                           output_features=16, strides=strides)
+
     model.to(device)
-
-
-
-
+    ema.to(device)
 
     # Analyze the training process
     acc_ema = []
@@ -133,9 +134,6 @@ def main():
     scheduler = LambdaLR(optimizer=optimizer, lr_lambda=cyclic_learning_rate_with_warmup(warmup_steps,
                                                                                          initial_training_step,
                                                                                          total_training_steps))
-
-    # Define exponential moving avarage of the parameters with 0.999 weight decay
-    exp_moving_avg = EMA(model.parameters(), decay=ema_decay)
 
     # Define CTA augmentation
     cta = ctaug.CTAugment(depth=2, t=0.8, ro=0.99)
@@ -216,7 +214,13 @@ def main():
             optimizer.step()
 
             # Update EMA parameters
-            exp_moving_avg.update(model.parameters())
+            with torch.no_grad():
+              # Update EMA parameters
+              for param_train, param_ema in zip(model.parameters(), ema.parameters()):
+                  param_ema.copy_(param_ema * ema_decay + param_train.detach() * (1-ema_decay))
+              
+              for buffer_train, buffer_ema in zip(model.buffers(), ema.buffers()):
+                  buffer_ema.copy_(buffer_train)
 
             # Stack learning process
             semi_supervised_loss_list_tmp.append(semi_supervised_loss.item())
@@ -236,7 +240,7 @@ def main():
         print('Unsupervised Loss', unsupervised_loss_list[-1])
         print('Unsupervised ratio', unsupervised_ratio_list[-1])
 
-        acc_ema_tmp = test_fixmatch(exp_moving_avg, model, test_loader, B, device)
+        acc_ema_tmp = test_fixmatch(ema, test_loader, B, device)
         acc_ema.append(acc_ema_tmp.item())
         print('Accuracy of ema', acc_ema[-1])
         # Save best model

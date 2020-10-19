@@ -74,21 +74,20 @@ def pseudo_labeling(model, weakly_augment_inputs, threshold):
 
 
 # -----TESTING----- #
-def test_fixmatch(ema, model, test_data, B, device):
+def test_fixmatch(ema, test_data, B, device):
     # Compute accuracy for the model and ema
     acc_ema_tmp = 0
     # Evalutate method for the model
     
     with torch.no_grad():
         n_batches = 0
-        model.eval()
+        ema.eval()
         for batch_idx, img_batch in enumerate(test_data):
             # Define batch images and labels
             inputs, targets = img_batch
 
             # Evaluate method for the ema
-            ema.copy_to(model.parameters())
-            logits = model(inputs.to(device))[0]
+            logits = ema(inputs.to(device))[0]
             acc_ema_tmp += evaluate(logits, targets.to(device))
             n_batches += 1
 
