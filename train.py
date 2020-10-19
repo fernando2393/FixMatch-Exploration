@@ -75,7 +75,7 @@ def pseudo_labeling(model, weakly_augment_inputs, threshold):
 
 # -----TESTING----- #
 def test_fixmatch(ema, model, test_data, B, device):
-    # Compute accuract for the model and ema
+    # Compute accuracy for the model and ema
     acc_ema_tmp = 0
     # Evalutate method for the model
     
@@ -98,7 +98,7 @@ def test_fixmatch(ema, model, test_data, B, device):
     # Compute the accuracy average over the batches (size B)
     acc_ema = acc_ema_tmp / n_batches
 
-    return acc_ema #, acc_model
+    return acc_ema
 
 
 def evaluate(logits, targets):

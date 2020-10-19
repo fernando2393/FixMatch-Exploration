@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import torch.backends.cudnn as cudnn
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
-import time
 from tqdm import tqdm
 import torch.distributed as dist
 import CTAugment as ctaug
@@ -28,16 +27,16 @@ def set_seed(seed=42):
 
 
 # -----DEFINE FUNCTIONS----- #
-def cyclic_learning_rate_with_warmup(warmup_steps, step, total_training_epochs):
+def cyclic_learning_rate_with_warmup(warmup_steps, step, total_training_steps):
     # If you don't achieve the number of warmup steps, don't update
 
     def scheduler_function(step):
         if step < warmup_steps:
-            return 1
+            return float(step) / float(warmup_steps)
 
         else:  # Once you surpass the number of warmup steps,
             # you should decay they learning rate close zero in a cosine manner
-            x = np.cos(7. / 16. * np.pi * (step / total_training_epochs))
+            x = np.cos(7. / 16. * np.pi * ((step - warmup_steps) / (total_training_steps - warmup_steps)))
             return x
 
     # Update learning rate scheduler
@@ -84,6 +83,7 @@ def main():
     initial_training_step = 0  # Start the training epoch from zero
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")  # Create device to perform computations in GPU (if available)
     ema_decay = 0.999
+    total_training_steps = 2 ** 20  # Number of training epochs, without early stopping (assuming the model
 
     # -----Define WideResNet Architecture-----#
     wrn_depth = 28
@@ -132,14 +132,13 @@ def main():
     # (Pytorch documentation)
     scheduler = LambdaLR(optimizer=optimizer, lr_lambda=cyclic_learning_rate_with_warmup(warmup_steps,
                                                                                          initial_training_step,
-                                                                                         total_training_epochs))
+                                                                                         total_training_steps))
 
     # Define exponential moving avarage of the parameters with 0.999 weight decay
     exp_moving_avg = EMA(model.parameters(), decay=ema_decay)
 
     # Define CTA augmentation
     cta = ctaug.CTAugment(depth=2, t=0.8, ro=0.99)
-    start = time.time()
 
     # Apply transformations
     labeled_dataset, unlabeled_dataset, train_label_cta = applyTransformations(DATA_ROOT,
@@ -237,17 +236,22 @@ def main():
         print('Unsupervised Loss', unsupervised_loss_list[-1])
         print('Unsupervised ratio', unsupervised_ratio_list[-1])
 
+        acc_ema_tmp = test_fixmatch(exp_moving_avg, model, test_loader, B, device)
+        acc_ema.append(acc_ema_tmp.item())
+        print('Accuracy of ema', acc_ema[-1])
+        # Save best model
+        if acc_ema[-1] > best_acc:
+            best_acc = acc_ema[-1]
+            final_model = model
+            string = './best_model/final_model_.pt'
+            f = open("best_model_description.txt", "w+")
+            f.write("Best model corresponds to epoch: " + str(epoch))
+            f.write("The parameters were:")
+            f.write("n_labeled_data = " + str(n_labeled_data))
+            f.write("B = " + str(B))
+            f.write("mu = " + str(mu))
+            torch.save(final_model, string)
         if epoch % 10 == 0 and epoch != 0:
-            acc_ema_tmp = test_fixmatch(exp_moving_avg, model, test_loader, B, device)
-            acc_ema.append(acc_ema_tmp.item())
-            print('Accuracy of ema', acc_ema[-1])
-            # Save best model
-            if acc_ema[-1] > best_acc:
-                best_acc = acc_ema[-1]
-                final_model = model
-                string = './best_model/final_model_'+ str(epoch+1)+'.pt'
-                torch.save(final_model, string)
-
             epoch_range = range(epoch + 1)
             # Plot Accuracy
             plot_performance('EMA Performance', 'Epochs', 'Accuracy', epoch_range, acc_ema, CB91_Red)
@@ -262,8 +266,6 @@ def main():
             plt.close()
 
 
-    end = time.time() - start
-    print("ELAPSED TIME:" + str(end))
     epoch_range = range(total_training_epochs)
 
     # Plot Accuracy
