@@ -71,19 +71,20 @@ def main():
     CB91_Blue = '#2CBDFE'
     CB91_Green = 'springgreen'
     CB91_Red = '#DA6F6F'
-    n_labeled_data = 4000  # We will train with 4000 labeled data to avoid computing many times the CTAugment
+    n_labeled_data = 250  # We will train with 4000 labeled data to avoid computing many times the CTAugment
     B = 64  # B from the paper, i.e. number of labeled examples per batch.
     mu = 7  # Hyperparam of Fixmatch determining the relative number of unlabeled examples w.r.t. B * mu
     unlabeled_batch_size = B * mu
     warmup_steps = 10  # Define number of warmup steps to avoid premature cyclic learning
-    initial_learning_rate = 0.3  # Small learning rate, which with cyclic decay will tend to zero
+    initial_learning_rate = 0.03  # Small learning rate, which with cyclic decay will tend to zero
     momentum = 0.9  # Momentum to access the Stochastic Gradient Descent
-    nesterov_factor = False  # They found that the nesterov hyperparm wasn't necessary to achieve errors below 5%
+    nesterov_factor = True  # They found that the nesterov hyperparm wasn't necessary to achieve errors below 5%
     pseudo_label_threshold = 0.95  # Threshold to guarantee confidence on the model
     total_training_epochs = 2 ** 10  # Number of training epochs, without early stopping (assuming the model
     # expects to see 2^26 images during the whole training)
     initial_training_epoch = 0  # Start the training epoch from zero
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")  # Create device to perform computations in GPU (if available)
+    ema_decay = 0.999
 
     # -----Define WideResNet Architecture-----#
     wrn_depth = 28
@@ -110,7 +111,7 @@ def main():
                                                                                          total_training_epochs))
 
     # Define exponential moving avarage of the parameters with 0.999 weight decay
-    exp_moving_avg = EMA(model.parameters(), decay=0.999)
+    exp_moving_avg = EMA(model.parameters(), decay=ema_decay)
 
     # Analyze the training process
     acc_model = []
@@ -123,14 +124,14 @@ def main():
     labeled_indeces, unlabeled_indeces, test_data = load_cifar10(DATA_ROOT, n_labeled_data)
 
     # Reshape indeces to have the same number of batches
-    '''n_unlabeled_images = len(unlabeled_indeces) # CIFAR - 49750 unlabeled for 250 labeled
+    n_unlabeled_images = len(unlabeled_indeces) # CIFAR - 49750 unlabeled for 250 labeled
     n_complete_batches = (n_unlabeled_images // unlabeled_batch_size) # Number of complete batches 111
     n_images_in_complete_batches = n_complete_batches * B # 7104
     n_labeles_times = (n_images_in_complete_batches // n_labeled_data) # 28
     reminder = (n_images_in_complete_batches % n_labeled_data) + B # 104 + batch size
     labeled_indeces_extension = []
     labeled_indeces_extension.extend(labeled_indeces * n_labeles_times)
-    labeled_indeces_extension.extend(labeled_indeces[:reminder])'''
+    labeled_indeces_extension.extend(labeled_indeces[:reminder])
 
     # Define CTA augmentation
     cta = ctaug.CTAugment(depth=2, t=0.8, ro=0.99)
@@ -138,7 +139,7 @@ def main():
 
     # Apply transformations
     labeled_dataset, unlabeled_dataset, train_label_cta = applyTransformations(DATA_ROOT,
-                                                                               labeled_indeces,
+                                                                               labeled_indeces_extension,
                                                                                labeled_indeces,
                                                                                unlabeled_indeces,
                                                                                CIFAR10_mean,
@@ -218,8 +219,8 @@ def main():
         scheduler.step()
         
         # Test and compute the accuracy for the current model and exponential moving average
-        acc_model_tmp, acc_ema_tmp = test_fixmatch(exp_moving_avg, model, test_loader, B, device)
-        acc_model.append(acc_model_tmp.item())
+        acc_ema_tmp = test_fixmatch(exp_moving_avg, model, test_loader, B, device)
+        #acc_model.append(acc_model_tmp.item())
         acc_ema.append(acc_ema_tmp.item())
         semi_supervised_loss_list.append(np.mean(semi_supervised_loss_list_tmp))
         supervised_loss_list.append(np.mean(supervised_loss_list_tmp))
@@ -232,7 +233,7 @@ def main():
         if epoch % 10 == 0 and epoch != 0:
             epoch_range = range(epoch + 1)
             # Plot Accuracy
-            plot_performance('Model Performance', 'Epochs', 'Accuracy', epoch_range, acc_model, CB91_Blue)
+            #plot_performance('Model Performance', 'Epochs', 'Accuracy', epoch_range, acc_model, CB91_Blue)
             plot_performance('EMA Performance', 'Epochs', 'Accuracy', epoch_range, acc_ema, CB91_Red)
             plt.savefig('Accuracy250.png')
             plt.close()
@@ -250,15 +251,17 @@ def main():
     epoch_range = range(total_training_epochs)
 
     # Plot Accuracy
-    plot_performance('Model Performance', 'Epochs', 'Accuracy', epoch_range, acc_model, CB91_Blue)
+    #plot_performance('Model Performance', 'Epochs', 'Accuracy', epoch_range, acc_model, CB91_Blue)
     plot_performance('EMA Performance', 'Epochs', 'Accuracy', epoch_range, acc_ema, CB91_Red)
     plt.savefig('Accuracy250.png')
+    plt.close()
 
     # Plot Losses
     plot_performance('Semi Supervised Loss', 'Epochs', 'Loss', epoch_range, semi_supervised_loss_list, CB91_Blue)
     plot_performance('Supervised Loss', 'Epochs', 'Loss', epoch_range, supervised_loss_list, CB91_Green)
     plot_performance('Unsupervised Loss', 'Epochs', 'Loss', epoch_range, unsupervised_loss_list, CB91_Red)
     plt.savefig('Loss250.png')
+    plt.close()
 
 
 if __name__ == "__main__":

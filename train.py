@@ -63,7 +63,7 @@ def pseudo_labeling(model, weakly_augment_inputs, threshold):
 # -----TESTING----- #
 def test_fixmatch(ema, model, test_data, B, device):
     # Compute accuract for the model and ema
-    acc_model_tmp = 0  # Creating a list might be interesting if you decide to check the performance of each batch
+    # acc_model_tmp = 0  # Creating a list might be interesting if you decide to check the performance of each batch
     acc_ema_tmp = 0
     # Evalutate method for the model
     model.eval()
@@ -73,20 +73,20 @@ def test_fixmatch(ema, model, test_data, B, device):
             # Define batch images and labels
             inputs, targets = img_batch
 
-            logits = model(inputs.to(device))[0]
-            acc_model_tmp += evaluate(logits, targets.to(device))
+            #logits = model(inputs.to(device))[0]
+            #acc_model_tmp += evaluate(logits, targets.to(device))
 
             # Evalutate method for the ema
             ema.copy_to(model.parameters())
-            logits = model(inputs.to(device))[0]
+            logits = model(inputs.detach().to(device))[0]
             acc_ema_tmp += evaluate(logits, targets.to(device))
             n_batches += 1
 
     # Compute the accuracy average over the batches (size B) 
-    acc_model = acc_model_tmp / n_batches
+    #acc_model = acc_model_tmp / n_batches
     acc_ema = acc_ema_tmp / n_batches
 
-    return acc_model, acc_ema
+    return acc_ema #, acc_model
 
 
 def evaluate(logits, targets):
