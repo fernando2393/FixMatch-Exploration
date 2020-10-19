@@ -225,7 +225,7 @@ def main():
         semi_supervised_loss_list.append(np.mean(semi_supervised_loss_list_tmp))
         supervised_loss_list.append(np.mean(supervised_loss_list_tmp))
         unsupervised_loss_list.append(np.mean(unsupervised_loss_list_tmp))
-        print('Accuracy of the model', acc_model[-1])
+        # print('Accuracy of the model', acc_model[-1])
         print('Accuracy of ema', acc_ema[-1])
         print('Unsupervised Loss', unsupervised_loss_list[-1])
 
