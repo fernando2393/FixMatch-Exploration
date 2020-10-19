@@ -38,6 +38,9 @@ def unsupervised_train(model, device, unlabeled_image_batch, threshold):
     # Assign Pseudo-labels and mask them based on threshold
     pseudo_labels, masked_indeces = pseudo_labeling(model, weakly_augment_inputs.to(device), threshold)
 
+    # Declare ratio
+    unsupervised_ratio = 0
+
     if True not in masked_indeces:
         unsupervised_loss = torch.tensor(0.0) # 0 if no image surpassed the threshold
     else:
