@@ -49,13 +49,10 @@ def unsupervised_train(model, device, unlabeled_image_batch, threshold):
 
 def pseudo_labeling(model, weakly_augment_inputs, threshold):
     # Detach the linear prediction 
-    logits = model(weakly_augment_inputs.detach())[0]
-
-    # Compute pseudo probabilities
-    probs = torch.softmax(logits, dim=1)
+    logits = model(weakly_augment_inputs)[0]
 
     # One hot encode pseudo labels and define mask for those that surpassed the threshold
-    scores, pseudo_labels = torch.max(probs, dim=1)
+    scores, pseudo_labels = torch.max(logits, dim=1)
     masked_indeces = (scores >= threshold)
     return pseudo_labels, masked_indeces
 
@@ -66,19 +63,17 @@ def test_fixmatch(ema, model, test_data, B, device):
     # acc_model_tmp = 0  # Creating a list might be interesting if you decide to check the performance of each batch
     acc_ema_tmp = 0
     # Evalutate method for the model
-    model.eval()
+    
     with torch.no_grad():
         n_batches = 0
+        model.eval()
         for batch_idx, img_batch in enumerate(test_data):
             # Define batch images and labels
             inputs, targets = img_batch
 
-            #logits = model(inputs.to(device))[0]
-            #acc_model_tmp += evaluate(logits, targets.to(device))
-
             # Evalutate method for the ema
             ema.copy_to(model.parameters())
-            logits = model(inputs.detach().to(device))[0]
+            logits = model(inputs.to(device))[0]
             acc_ema_tmp += evaluate(logits, targets.to(device))
             n_batches += 1
 
@@ -90,11 +85,9 @@ def test_fixmatch(ema, model, test_data, B, device):
 
 
 def evaluate(logits, targets):
-    # Compute the scores
-    scores = torch.softmax(logits, dim=1)
 
     # Return the predictions
-    _, preds = torch.max(scores, dim=1)
+    _, preds = torch.max(logits, dim=1)
 
     # Compare the test labels to the predictions
     match = (targets == preds) * 1
