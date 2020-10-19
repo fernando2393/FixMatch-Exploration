@@ -52,14 +52,13 @@ def unsupervised_train(model, device, unlabeled_image_batch, threshold):
         unsupervised_loss = criterion(strongly_predictions[masked_indeces], pseudo_labels[masked_indeces].to(device))
 
         # Compute number of unsupervised images used
-        unsupervised_ratio = sum(masked_indeces) / len(masked_indeces)
+        unsupervised_ratio = sum(masked_indeces.tolist()) / len(masked_indeces.tolist())
 
     return unsupervised_loss, unsupervised_ratio
 
 
 def pseudo_labeling(model, weakly_augment_inputs, threshold):
 
-    # Detach the linear prediction 
     logits = model(weakly_augment_inputs)[0]
 
     # Compute the probabilities

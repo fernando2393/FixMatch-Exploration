@@ -6,7 +6,7 @@ from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 import time
 from tqdm import tqdm
-
+import torch.distributed as dist
 import CTAugment as ctaug
 from data.data_loader import *
 import torch.optim as optim
@@ -85,6 +85,7 @@ def main():
     initial_training_epoch = 0  # Start the training epoch from zero
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")  # Create device to perform computations in GPU (if available)
     ema_decay = 0.999
+    rank = device.index
 
     # -----Define WideResNet Architecture-----#
     wrn_depth = 28
@@ -99,6 +100,8 @@ def main():
     model = wrn.WideResNet(d=wrn_depth, k=wrn_width, n_classes=n_classes, input_features=channels,
                            output_features=16, strides=strides)
     model.to(device)
+
+
 
     # Define Stochastic Gradient Descent
     optimizer = optim.SGD(model.parameters(), lr=initial_learning_rate, momentum=momentum, nesterov=nesterov_factor)
@@ -149,7 +152,7 @@ def main():
     # Load datasets
     labeled_train_data = DataLoader(labeled_dataset, batch_size=B,
                                     sampler=RandomSampler(labeled_dataset),
-                                    num_workers=0,
+                                    num_workers=16,
                                     drop_last=True,
                                     pin_memory=True)
 
@@ -158,7 +161,7 @@ def main():
                                       drop_last=True, pin_memory=True)
 
     test_loader = DataLoader(test_data, sampler=SequentialSampler(test_data),
-                             batch_size=B, num_workers=0,
+                             batch_size=B, num_workers=16,
                              pin_memory=True)
 
     labeled_train_cta_data = DataLoader(train_label_cta, sampler=RandomSampler(train_label_cta),
@@ -239,7 +242,7 @@ def main():
         if acc_ema[-1] > best_acc:
             best_acc = acc_ema[-1]
             final_model = model
-            string = '/best_model/final_model_'+ str(epoch+1)+'.pt'
+            string = './best_model/final_model_'+ str(epoch+1)+'.pt'
             torch.save(final_model, string)
 
         if epoch % 10 == 0 and epoch != 0:
