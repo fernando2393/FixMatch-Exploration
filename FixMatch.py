@@ -28,16 +28,16 @@ def set_seed(seed=42):
 
 
 # -----DEFINE FUNCTIONS----- #
-def cyclic_learning_rate_with_warmup(warmup_steps, epoch, total_training_epochs):
+def cyclic_learning_rate_with_warmup(warmup_steps, step, total_training_epochs):
     # If you don't achieve the number of warmup steps, don't update
 
-    def scheduler_function(epoch):
-        if epoch < warmup_steps:
+    def scheduler_function(step):
+        if step < warmup_steps:
             return 1
 
         else:  # Once you surpass the number of warmup steps,
             # you should decay they learning rate close zero in a cosine manner
-            x = np.cos(7. / 16. * np.pi * (epoch / total_training_epochs))
+            x = np.cos(7. / 16. * np.pi * (step / total_training_epochs))
             return x
 
     # Update learning rate scheduler
@@ -75,17 +75,15 @@ def main():
     B = 64  # B from the paper, i.e. number of labeled examples per batch.
     mu = 7  # Hyperparam of Fixmatch determining the relative number of unlabeled examples w.r.t. B * mu
     unlabeled_batch_size = B * mu
-    warmup_steps = 10  # Define number of warmup steps to avoid premature cyclic learning
     initial_learning_rate = 0.03  # Small learning rate, which with cyclic decay will tend to zero
     momentum = 0.9  # Momentum to access the Stochastic Gradient Descent
     nesterov_factor = True  # They found that the nesterov hyperparm wasn't necessary to achieve errors below 5%
     pseudo_label_threshold = 0.95  # Threshold to guarantee confidence on the model
     total_training_epochs = 2 ** 10  # Number of training epochs, without early stopping (assuming the model
     # expects to see 2^26 images during the whole training)
-    initial_training_epoch = 0  # Start the training epoch from zero
+    initial_training_step = 0  # Start the training epoch from zero
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")  # Create device to perform computations in GPU (if available)
     ema_decay = 0.999
-    rank = device.index
 
     # -----Define WideResNet Architecture-----#
     wrn_depth = 28
@@ -103,18 +101,7 @@ def main():
 
 
 
-    # Define Stochastic Gradient Descent
-    optimizer = optim.SGD(model.parameters(), lr=initial_learning_rate, momentum=momentum, nesterov=nesterov_factor)
 
-    # Create scheduler that will take charge of warming up and performing learning rate decay
-    # LambdaLR: Sets the learning rate of each parameter group to the initial lr times a given function.
-    # (Pytorch documentation)
-    scheduler = LambdaLR(optimizer=optimizer, lr_lambda=cyclic_learning_rate_with_warmup(warmup_steps,
-                                                                                         initial_training_epoch,
-                                                                                         total_training_epochs))
-
-    # Define exponential moving avarage of the parameters with 0.999 weight decay
-    exp_moving_avg = EMA(model.parameters(), decay=ema_decay)
 
     # Analyze the training process
     acc_ema = []
@@ -135,6 +122,20 @@ def main():
     labeled_indeces_extension = []
     labeled_indeces_extension.extend(labeled_indeces * n_labeles_times)
     labeled_indeces_extension.extend(labeled_indeces[:reminder])
+    warmup_steps = 10 * (n_complete_batches + 1)  # Define number of warmup steps to avoid premature cyclic learning
+
+    # Define Stochastic Gradient Descent
+    optimizer = optim.SGD(model.parameters(), lr=initial_learning_rate, momentum=momentum, nesterov=nesterov_factor)
+
+    # Create scheduler that will take charge of warming up and performing learning rate decay
+    # LambdaLR: Sets the learning rate of each parameter group to the initial lr times a given function.
+    # (Pytorch documentation)
+    scheduler = LambdaLR(optimizer=optimizer, lr_lambda=cyclic_learning_rate_with_warmup(warmup_steps,
+                                                                                         initial_training_step,
+                                                                                         total_training_epochs))
+
+    # Define exponential moving avarage of the parameters with 0.999 weight decay
+    exp_moving_avg = EMA(model.parameters(), decay=ema_decay)
 
     # Define CTA augmentation
     cta = ctaug.CTAugment(depth=2, t=0.8, ro=0.99)
@@ -228,24 +229,25 @@ def main():
             scheduler.step()
         
         # Test and compute the accuracy for the current model and exponential moving average
-        acc_ema_tmp = test_fixmatch(exp_moving_avg, model, test_loader, B, device)
-        acc_ema.append(acc_ema_tmp.item())
+
         semi_supervised_loss_list.append(np.mean(semi_supervised_loss_list_tmp))
         supervised_loss_list.append(np.mean(supervised_loss_list_tmp))
         unsupervised_loss_list.append(np.mean(unsupervised_loss_list_tmp))
         unsupervised_ratio_list.append(np.mean(unsupervised_ratio_tmp))
-        print('Accuracy of ema', acc_ema[-1])
         print('Unsupervised Loss', unsupervised_loss_list[-1])
         print('Unsupervised ratio', unsupervised_ratio_list[-1])
 
-        # Save best model
-        if acc_ema[-1] > best_acc:
-            best_acc = acc_ema[-1]
-            final_model = model
-            string = './best_model/final_model_'+ str(epoch+1)+'.pt'
-            torch.save(final_model, string)
-
         if epoch % 10 == 0 and epoch != 0:
+            acc_ema_tmp = test_fixmatch(exp_moving_avg, model, test_loader, B, device)
+            acc_ema.append(acc_ema_tmp.item())
+            print('Accuracy of ema', acc_ema[-1])
+            # Save best model
+            if acc_ema[-1] > best_acc:
+                best_acc = acc_ema[-1]
+                final_model = model
+                string = './best_model/final_model_'+ str(epoch+1)+'.pt'
+                torch.save(final_model, string)
+
             epoch_range = range(epoch + 1)
             # Plot Accuracy
             plot_performance('EMA Performance', 'Epochs', 'Accuracy', epoch_range, acc_ema, CB91_Red)
