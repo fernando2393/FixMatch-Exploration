@@ -71,7 +71,7 @@ def main():
     CB91_Blue = '#2CBDFE'
     CB91_Green = 'springgreen'
     CB91_Red = '#DA6F6F'
-    n_labeled_data = 250  # We will train with 4000 labeled data to avoid computing many times the CTAugment
+    n_labeled_data = 4000  # We will train with 4000 labeled data to avoid computing many times the CTAugment
     B = 64  # B from the paper, i.e. number of labeled examples per batch.
     mu = 7  # Hyperparam of Fixmatch determining the relative number of unlabeled examples w.r.t. B * mu
     unlabeled_batch_size = B * mu
@@ -123,14 +123,14 @@ def main():
     labeled_indeces, unlabeled_indeces, test_data = load_cifar10(DATA_ROOT, n_labeled_data)
 
     # Reshape indeces to have the same number of batches
-    n_unlabeled_images = len(unlabeled_indeces) # CIFAR - 49750 unlabeled for 250 labeled
+    '''n_unlabeled_images = len(unlabeled_indeces) # CIFAR - 49750 unlabeled for 250 labeled
     n_complete_batches = (n_unlabeled_images // unlabeled_batch_size) # Number of complete batches 111
     n_images_in_complete_batches = n_complete_batches * B # 7104
     n_labeles_times = (n_images_in_complete_batches // n_labeled_data) # 28
     reminder = (n_images_in_complete_batches % n_labeled_data) + B # 104 + batch size
     labeled_indeces_extension = []
     labeled_indeces_extension.extend(labeled_indeces * n_labeles_times)
-    labeled_indeces_extension.extend(labeled_indeces[:reminder])
+    labeled_indeces_extension.extend(labeled_indeces[:reminder])'''
 
     # Define CTA augmentation
     cta = ctaug.CTAugment(depth=2, t=0.8, ro=0.99)
@@ -138,7 +138,7 @@ def main():
 
     # Apply transformations
     labeled_dataset, unlabeled_dataset, train_label_cta = applyTransformations(DATA_ROOT,
-                                                                               labeled_indeces_extension,
+                                                                               labeled_indeces,
                                                                                labeled_indeces,
                                                                                unlabeled_indeces,
                                                                                CIFAR10_mean,
@@ -235,12 +235,14 @@ def main():
             plot_performance('Model Performance', 'Epochs', 'Accuracy', epoch_range, acc_model, CB91_Blue)
             plot_performance('EMA Performance', 'Epochs', 'Accuracy', epoch_range, acc_ema, CB91_Red)
             plt.savefig('Accuracy250.png')
+            plt.close()
 
             # Plot Losses
             plot_performance('Semi Supervised Loss', 'Epochs', 'Loss', epoch_range, semi_supervised_loss_list, CB91_Blue)
             plot_performance('Supervised Loss', 'Epochs', 'Loss', epoch_range, supervised_loss_list, CB91_Green)
             plot_performance('Unsupervised Loss', 'Epochs', 'Loss', epoch_range, unsupervised_loss_list, CB91_Red)
             plt.savefig('Loss250.png')
+            plt.close()
 
 
     end = time.time() - start
