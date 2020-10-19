@@ -86,7 +86,7 @@ def test_fixmatch(ema, model, test_data, B, device):
             # Define batch images and labels
             inputs, targets = img_batch
 
-            # Evalutate method for the ema
+            # Evaluate method for the ema
             ema.copy_to(model.parameters())
             logits = model(inputs.to(device))[0]
             acc_ema_tmp += evaluate(logits, targets.to(device))
