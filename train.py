@@ -8,12 +8,12 @@ def train_fixmatch(model, device, labeled_image_batch, labeled_targets_batch, un
     supervised_loss = supervised_train(model, device, labeled_image_batch, labeled_targets_batch)
 
     # Compute loss of unlabeled_data (mean loss of images)
-    unsupervised_loss = unsupervised_train(model, device, unlabeled_image_batch, threshold)
+    unsupervised_loss, unsupervised_ratio = unsupervised_train(model, device, unlabeled_image_batch, threshold)
 
     # Compute the total loss (SSL loss)
     semi_supervised_loss = supervised_loss + lambda_unsupervised * unsupervised_loss
 
-    return semi_supervised_loss, supervised_loss, unsupervised_loss
+    return semi_supervised_loss, supervised_loss, unsupervised_loss, unsupervised_ratio
 
 
 def supervised_train(model, device, inputs, targets):
@@ -40,16 +40,24 @@ def unsupervised_train(model, device, unlabeled_image_batch, threshold):
     else:
         # Compute predictions for strongly augmented images
         strongly_predictions = model(strongly_augment_inputs.to(device))[0]
+
         # Compute loss of batch
         criterion = CrossEntropyLoss()
         unsupervised_loss = criterion(strongly_predictions[masked_indeces], pseudo_labels[masked_indeces].to(device))
 
-    return unsupervised_loss
+        # Compute number of unsupervised images used
+        unsupervised_ratio = sum(masked_indeces) / len(masked_indeces)
+
+    return unsupervised_loss, unsupervised_ratio
 
 
 def pseudo_labeling(model, weakly_augment_inputs, threshold):
+
     # Detach the linear prediction 
     logits = model(weakly_augment_inputs)[0]
+
+    # Compute the probabilities
+    probs = torch.softmax(logits.detach(), dim=1)
 
     # One hot encode pseudo labels and define mask for those that surpassed the threshold
     scores, pseudo_labels = torch.max(logits, dim=1)
@@ -60,7 +68,6 @@ def pseudo_labeling(model, weakly_augment_inputs, threshold):
 # -----TESTING----- #
 def test_fixmatch(ema, model, test_data, B, device):
     # Compute accuract for the model and ema
-    # acc_model_tmp = 0  # Creating a list might be interesting if you decide to check the performance of each batch
     acc_ema_tmp = 0
     # Evalutate method for the model
     
@@ -77,8 +84,7 @@ def test_fixmatch(ema, model, test_data, B, device):
             acc_ema_tmp += evaluate(logits, targets.to(device))
             n_batches += 1
 
-    # Compute the accuracy average over the batches (size B) 
-    #acc_model = acc_model_tmp / n_batches
+    # Compute the accuracy average over the batches (size B)
     acc_ema = acc_ema_tmp / n_batches
 
     return acc_ema #, acc_model

@@ -114,11 +114,11 @@ def main():
     exp_moving_avg = EMA(model.parameters(), decay=ema_decay)
 
     # Analyze the training process
-    acc_model = []
     acc_ema = []
     supervised_loss_list = []
     unsupervised_loss_list = []
     semi_supervised_loss_list = []
+    unsupervised_ratio_list = []
 
     # Query datasets
     labeled_indeces, unlabeled_indeces, test_data = load_cifar10(DATA_ROOT, n_labeled_data)
@@ -167,6 +167,10 @@ def main():
                                         drop_last=True,
                                         pin_memory=True)
 
+
+    # Compute best accuracy
+    best_acc = 0
+
     for epoch in tqdm(range(total_training_epochs)):
         print('TRAINING epoch', epoch + 1)
 
@@ -177,6 +181,7 @@ def main():
         semi_supervised_loss_list_tmp = []
         supervised_loss_list_tmp = []
         unsupervised_loss_list_tmp = []
+        unsupervised_ratio_tmp = []
 
         # Initialize epoch training
         model.train()
@@ -192,7 +197,7 @@ def main():
             lambda_unsupervised = 1
 
             # Train model, update weights per epoch based on the combination of labeled and unlabeled losses
-            semi_supervised_loss, supervised_loss, unsupervised_loss = train_fixmatch(model,
+            semi_supervised_loss, supervised_loss, unsupervised_loss, unsupervised_ratio = train_fixmatch(model,
                                                                                     device,
                                                                                     labeled_image_batch,
                                                                                     labeled_targets,
@@ -214,26 +219,32 @@ def main():
             semi_supervised_loss_list_tmp.append(semi_supervised_loss.item())
             supervised_loss_list_tmp.append(supervised_loss.item())
             unsupervised_loss_list_tmp.append(unsupervised_loss.item())
+            unsupervised_ratio_tmp.append(unsupervised_ratio)
         
-        # Update learning rate
-        scheduler.step()
+            # Update learning rate
+            scheduler.step()
         
         # Test and compute the accuracy for the current model and exponential moving average
         acc_ema_tmp = test_fixmatch(exp_moving_avg, model, test_loader, B, device)
-        #acc_model.append(acc_model_tmp.item())
         acc_ema.append(acc_ema_tmp.item())
         semi_supervised_loss_list.append(np.mean(semi_supervised_loss_list_tmp))
         supervised_loss_list.append(np.mean(supervised_loss_list_tmp))
         unsupervised_loss_list.append(np.mean(unsupervised_loss_list_tmp))
-        # print('Accuracy of the model', acc_model[-1])
+        unsupervised_ratio_list.append(np.mean(unsupervised_ratio_tmp))
         print('Accuracy of ema', acc_ema[-1])
         print('Unsupervised Loss', unsupervised_loss_list[-1])
+        print('Unsupervised ratio', unsupervised_ratio_list[-1])
 
+        # Save best model
+        if acc_ema[-1] > best_acc:
+            best_acc = acc_ema[-1]
+            final_model = model
+            string = '/best_model/final_model_'+ str(epoch+1)+'.pt'
+            torch.save(final_model, string)
 
         if epoch % 10 == 0 and epoch != 0:
             epoch_range = range(epoch + 1)
             # Plot Accuracy
-            #plot_performance('Model Performance', 'Epochs', 'Accuracy', epoch_range, acc_model, CB91_Blue)
             plot_performance('EMA Performance', 'Epochs', 'Accuracy', epoch_range, acc_ema, CB91_Red)
             plt.savefig('Accuracy250.png')
             plt.close()
@@ -251,8 +262,7 @@ def main():
     epoch_range = range(total_training_epochs)
 
     # Plot Accuracy
-    #plot_performance('Model Performance', 'Epochs', 'Accuracy', epoch_range, acc_model, CB91_Blue)
-    plot_performance('EMA Performance', 'Epochs', 'Accuracy', epoch_range, acc_ema, CB91_Red)
+    plot_performance('EMA Performance', 'Epochs', 'Accuracy', epoch_range, acc_ema, CB91_Blue)
     plt.savefig('Accuracy250.png')
     plt.close()
 
