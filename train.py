@@ -59,6 +59,8 @@ def unsupervised_train(model, device, unlabeled_image_batch, threshold):
 
 def pseudo_labeling(model, weakly_augment_inputs, threshold):
 
+    # Set model to eval so it won't change the gradients based on the pseudo-labels
+    model.eval()
     logits = model(weakly_augment_inputs)[0]
 
     # Compute the probabilities

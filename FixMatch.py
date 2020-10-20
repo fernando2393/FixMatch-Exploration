@@ -195,7 +195,9 @@ def main():
             # Current learning rate to compute the loss combination
             lambda_unsupervised = 1
 
+            # Set gradients to zero before start training
             model.zero_grad()
+
             # Train model, update weights per epoch based on the combination of labeled and unlabeled losses
             semi_supervised_loss, supervised_loss, unsupervised_loss, unsupervised_ratio = train_fixmatch(model,
                                                                                     device,
@@ -222,9 +224,10 @@ def main():
             scheduler.step()
 
             # Update EMA parameters
-            for name, param in model.named_parameters():
-                if param.requires_grad:
-                    param.data = ema(name, param.data)
+            with torch.no_grad:
+                for name, param in model.named_parameters():
+                    if param.requires_grad:
+                        param.data = ema(name, param.data)
 
 
         # Test and compute the accuracy for the current model and exponential moving average
