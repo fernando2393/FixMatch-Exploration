@@ -197,6 +197,7 @@ def main():
             model.zero_grad()
 
             # Train model, update weights per epoch based on the combination of labeled and unlabeled losses
+            model.train()
             semi_supervised_loss, supervised_loss, unsupervised_loss, unsupervised_ratio = train_fixmatch(model,
                                                                                     device,
                                                                                     labeled_image_batch,

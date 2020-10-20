@@ -18,8 +18,6 @@ def train_fixmatch(model, device, labeled_image_batch, labeled_targets_batch, un
 
 def supervised_train(model, device, inputs, targets):
 
-    # Start training
-    model.train()
     # Make predictions
     predictions = model(inputs.to(device))[0]  # Item 0 -> Output. Items 1, 2, 3 -> Attention
 
@@ -38,7 +36,12 @@ def unsupervised_train(model, device, unlabeled_image_batch, threshold):
     weakly_augment_inputs, strongly_augment_inputs = unlabeled_image_batch
 
     # Assign Pseudo-labels and mask them based on threshold
-    pseudo_labels, masked_indeces = pseudo_labeling(model, weakly_augment_inputs.to(device), threshold)
+    with torch.no_grad:
+        model.eval()
+        pseudo_labels, masked_indeces = pseudo_labeling(model, weakly_augment_inputs.to(device), threshold)
+
+    # Start training
+    model.train()
 
     # Declare ratio
     unsupervised_ratio = 0
@@ -46,8 +49,6 @@ def unsupervised_train(model, device, unlabeled_image_batch, threshold):
     if True not in masked_indeces:
         unsupervised_loss = torch.tensor(0.0) # 0 if no image surpassed the threshold
     else:
-        # Start training
-        model.train()
         # Compute predictions for strongly augmented images
         strongly_predictions = model(strongly_augment_inputs.to(device))[0]
 
