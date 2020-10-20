@@ -48,11 +48,12 @@ def unsupervised_train(model, device, unlabeled_image_batch, unlabeled_batch_siz
         unsupervised_loss = torch.tensor(0.0) # 0 if no image surpassed the threshold
     else:
         # Compute predictions for strongly augmented images
-        strongly_predictions = model(strongly_augment_inputs.to(device))[0]
+        augment_with_pseudolabels = strongly_augment_inputs[masked_indeces]
+        strongly_predictions = model(augment_with_pseudolabels.to(device))[0]
 
         # Compute loss of batch
         criterion_unsupervised = CrossEntropyLoss(reduction='sum')
-        unsupervised_loss = criterion_unsupervised(strongly_predictions[masked_indeces], pseudo_labels[masked_indeces].to(device)) / unlabeled_batch_size
+        unsupervised_loss = criterion_unsupervised(strongly_predictions, pseudo_labels[masked_indeces].to(device)) / unlabeled_batch_size
 
         # Compute number of unsupervised images used
         unsupervised_ratio = sum(masked_indeces.tolist()) / len(masked_indeces.tolist())
