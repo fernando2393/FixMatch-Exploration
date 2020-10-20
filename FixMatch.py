@@ -203,6 +203,7 @@ def main():
                                                                                     labeled_image_batch,
                                                                                     labeled_targets,
                                                                                     unlabeled_image_batch,
+                                                                                    unlabeled_batch_size,
                                                                                     lambda_unsupervised,
                                                                                     pseudo_label_threshold
                                                                                     )

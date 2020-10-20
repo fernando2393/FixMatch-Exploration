@@ -2,13 +2,13 @@ import torch
 from torch.nn import CrossEntropyLoss
 
 # -----TRAINING----- #
-def train_fixmatch(model, device, labeled_image_batch, labeled_targets_batch, unlabeled_image_batch, lambda_unsupervised, threshold):
+def train_fixmatch(model, device, labeled_image_batch, labeled_targets_batch, unlabeled_image_batch, unlabeled_batch_size, lambda_unsupervised, threshold):
 
     # Compute loss for labeled data (mean loss of images)
     supervised_loss = supervised_train(model, device, labeled_image_batch, labeled_targets_batch)
 
     # Compute loss of unlabeled_data (mean loss of images)
-    unsupervised_loss, unsupervised_ratio = unsupervised_train(model, device, unlabeled_image_batch, threshold)
+    unsupervised_loss, unsupervised_ratio = unsupervised_train(model, device, unlabeled_image_batch, unlabeled_batch_size, threshold)
 
     # Compute the total loss (SSL loss)
     semi_supervised_loss = supervised_loss + lambda_unsupervised * unsupervised_loss
@@ -31,7 +31,7 @@ def supervised_train(model, device, inputs, targets):
     return supervised_loss
 
 
-def unsupervised_train(model, device, unlabeled_image_batch, threshold):
+def unsupervised_train(model, device, unlabeled_image_batch, unlabeled_batch_size, threshold):
     # Define batch images (weakly and strongly augmented) and not assing the target labels
     weakly_augment_inputs, strongly_augment_inputs = unlabeled_image_batch
 
@@ -51,8 +51,8 @@ def unsupervised_train(model, device, unlabeled_image_batch, threshold):
         strongly_predictions = model(strongly_augment_inputs.to(device))[0]
 
         # Compute loss of batch
-        criterion = CrossEntropyLoss()
-        unsupervised_loss = criterion(strongly_predictions[masked_indeces], pseudo_labels[masked_indeces].to(device))
+        criterion_unsupervised = CrossEntropyLoss(reduction='sum')
+        unsupervised_loss = criterion_unsupervised(strongly_predictions[masked_indeces], pseudo_labels[masked_indeces].to(device)) / unlabeled_batch_size
 
         # Compute number of unsupervised images used
         unsupervised_ratio = sum(masked_indeces.tolist()) / len(masked_indeces.tolist())
