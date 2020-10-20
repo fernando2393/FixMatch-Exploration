@@ -224,10 +224,9 @@ def main():
             scheduler.step()
 
             # Update EMA parameters
-            with torch.no_grad:
-                for name, param in model.named_parameters():
-                    if param.requires_grad:
-                        param.data = ema(name, param.data)
+            for name, param in model.named_parameters():
+                if param.requires_grad:
+                    param.data = ema(name, param.data)
 
 
         # Test and compute the accuracy for the current model and exponential moving average
