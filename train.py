@@ -36,7 +36,7 @@ def unsupervised_train(model, device, unlabeled_image_batch, threshold):
     weakly_augment_inputs, strongly_augment_inputs = unlabeled_image_batch
 
     # Assign Pseudo-labels and mask them based on threshold
-    with torch.no_grad:
+    with torch.no_grad():
         model.eval()
         pseudo_labels, masked_indeces = pseudo_labeling(model, weakly_augment_inputs.to(device), threshold)
 

@@ -70,7 +70,7 @@ def main():
     CB91_Blue = '#2CBDFE'
     CB91_Green = 'springgreen'
     CB91_Red = '#DA6F6F'
-    n_labeled_data = 4000  # We will train with 4000 labeled data to avoid computing many times the CTAugment
+    n_labeled_data = 250  # We will train with 250 labeled data to avoid computing many times the CTAugment
     B = 64  # B from the paper, i.e. number of labeled examples per batch.
     mu = 7  # Hyperparam of Fixmatch determining the relative number of unlabeled examples w.r.t. B * mu
     unlabeled_batch_size = B * mu
@@ -256,14 +256,14 @@ def main():
             epoch_range = range(epoch + 1)
             # Plot Accuracy
             plot_performance('EMA Performance', 'Epochs', 'Accuracy', epoch_range, acc_ema, CB91_Blue)
-            plt.savefig('Accuracy4000.png')
+            plt.savefig('Accuracy250.png')
             plt.close()
 
             # Plot Losses
             plot_performance('Semi Supervised Loss', 'Epochs', 'Loss', epoch_range, semi_supervised_loss_list, CB91_Blue)
             plot_performance('Supervised Loss', 'Epochs', 'Loss', epoch_range, supervised_loss_list, CB91_Green)
             plot_performance('Unsupervised Loss', 'Epochs', 'Loss', epoch_range, unsupervised_loss_list, CB91_Red)
-            plt.savefig('Loss4000.png')
+            plt.savefig('Loss250.png')
             plt.close()
 
 
@@ -271,14 +271,14 @@ def main():
 
     # Plot Accuracy
     plot_performance('EMA Performance', 'Epochs', 'Accuracy', epoch_range, acc_ema, CB91_Blue)
-    plt.savefig('Accuracy4000.png')
+    plt.savefig('Accuracy250.png')
     plt.close()
 
     # Plot Losses
     plot_performance('Semi Supervised Loss', 'Epochs', 'Loss', epoch_range, semi_supervised_loss_list, CB91_Blue)
     plot_performance('Supervised Loss', 'Epochs', 'Loss', epoch_range, supervised_loss_list, CB91_Green)
     plot_performance('Unsupervised Loss', 'Epochs', 'Loss', epoch_range, unsupervised_loss_list, CB91_Red)
-    plt.savefig('Loss4000.png')
+    plt.savefig('Loss250.png')
     plt.close()
 
 
