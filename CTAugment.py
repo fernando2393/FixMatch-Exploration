@@ -12,16 +12,6 @@ import torchvision.transforms as transforms
 from PIL import Image, ImageOps, ImageEnhance, ImageFilter
 
 
-# from collections import namedtuple
-
-# augment = {}  # Create a dictionary where the information from each transformation will be stored. The key will be
-# # the name of the transformation
-# augment_tuple = namedtuple('augment_tuple', ('transformation', 'bins'))
-#
-#
-# def get_augmentation_bins(bins, transform):
-#     augment[transform] = augment_tuple()
-
 
 def linenum(x):
     return x.__code__.co_firstlineno
@@ -134,51 +124,6 @@ def augment(cta, probe=True):
 
     return myfun
 
-    """""
-        y_pred = ema_model(x)
-        y_probas = torch.softmax(y_pred, dim=1)  # (N, C)
-         y_probas is a matrix in which each row is a data point and each column is the probability of belonging to each class
-         I guess that images in row 0 should belong to class 0, images in row 1 to class 1, etc,
-         otherwise the code below does not make sense:
-
-        if distributed:
-            for y_proba, t, policy in zip(y_probas, y, policies):
-                error = y_proba
-                error[t] -= 1
-                error = torch.abs(error).sum()
-             cta.update_rates(policy, 1.0 - 0.5 * error.item())
-    """""
-
-
-'''
-class augmentingImages(Dataset):
-    def __init__(self, data, transformations):
-        self.data = data
-        self.transformations = transformations
-
-    def __getitem__(self, i):
-        image = self.data[i]
-        return self.transformations(image)
-
-    def __len__(self):
-        return len(self.data)
-
-
-def applyTransform(image, parameters):
-    pass
-
-
-def applyCTA(x, policy, cta):
-    aux_image = Image.fromarray(np.round(127.5 * (1 + x)).clip(0, 255).astype('uint8'))
-    for transform, parameters in policy:
-        # TODO: complete the function applyTransform to find a way to apply the corresponding transform
-        augmented_image = applyTransform(aux_image, parameters)
-    return np.asarray(augmented_image).astype('f') / 127.5 - 1
 
 
 
-
-def generateCTAloader(training_data, ):
-    
-    CTALoader = augmentingImages(training_data, transformations)
-'''

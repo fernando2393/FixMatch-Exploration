@@ -1,1 +1,1 @@
-Best model corresponds to epoch: 2The parameters were:n_labeled_data = 250B = 64mu = 7
+Best model corresponds to epoch: 484The parameters were:n_labeled_data = 4000B = 64mu = 7
