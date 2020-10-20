@@ -186,8 +186,6 @@ def main():
         unsupervised_ratio_tmp = []
 
         # Initialize epoch training
-        model.train()
-
         # Train per batch
         full_train_data = zip(labeled_train_data, unlabeled_train_data)
         for batch_idx, ((labeled_image_batch, labeled_targets), (unlabeled_image_batch, unlabeled_targets)) in enumerate(full_train_data):

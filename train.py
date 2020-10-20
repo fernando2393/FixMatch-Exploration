@@ -18,6 +18,8 @@ def train_fixmatch(model, device, labeled_image_batch, labeled_targets_batch, un
 
 def supervised_train(model, device, inputs, targets):
 
+    # Start training
+    model.train()
     # Make predictions
     predictions = model(inputs.to(device))[0]  # Item 0 -> Output. Items 1, 2, 3 -> Attention
 
@@ -44,6 +46,8 @@ def unsupervised_train(model, device, unlabeled_image_batch, threshold):
     if True not in masked_indeces:
         unsupervised_loss = torch.tensor(0.0) # 0 if no image surpassed the threshold
     else:
+        # Start training
+        model.train()
         # Compute predictions for strongly augmented images
         strongly_predictions = model(strongly_augment_inputs.to(device))[0]
 
@@ -61,17 +65,18 @@ def pseudo_labeling(model, weakly_augment_inputs, threshold):
 
     # Set model to eval so it won't change the gradients based on the pseudo-labels
     model.eval()
-    logits = model(weakly_augment_inputs)[0]
+    with torch.no_grad():
+        logits = model(weakly_augment_inputs)[0]
 
-    # Compute the probabilities
-    probs = torch.softmax(logits.detach(), dim=1)
+        # Compute the probabilities
+        probs = torch.softmax(logits.detach(), dim=1)
 
-    # Free space
-    del logits
+        # Free space
+        del logits
 
-    # One hot encode pseudo labels and define mask for those that surpassed the threshold
-    scores, pseudo_labels = torch.max(probs, dim=1)
-    masked_indeces = (scores >= threshold)
+        # One hot encode pseudo labels and define mask for those that surpassed the threshold
+        scores, pseudo_labels = torch.max(probs, dim=1)
+        masked_indeces = (scores >= threshold)
     return pseudo_labels, masked_indeces
 
 
@@ -79,11 +84,11 @@ def pseudo_labeling(model, weakly_augment_inputs, threshold):
 def test_fixmatch(ema, test_data, B, device):
     # Compute accuracy for the model and ema
     acc_ema_tmp = 0
+
     # Evalutate method for the model
-    
+    ema.eval()
     with torch.no_grad():
         n_batches = 0
-        ema.eval()
         for batch_idx, img_batch in enumerate(test_data):
             # Define batch images and labels
             inputs, targets = img_batch
