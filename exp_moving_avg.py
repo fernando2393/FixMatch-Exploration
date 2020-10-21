@@ -4,7 +4,7 @@ from __future__ import unicode_literals
 import torch
 
 
-# Partially based on: https://github.com/tensorflow/tensorflow/blob/r1.13/tensorflow/python/training/moving_averages.py
+# Partially based on: https://github.com/fadel/pytorch_ema
 class EMA:
     """
     Maintains (exponential) moving average of a set of parameters.

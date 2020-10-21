@@ -70,7 +70,7 @@ def main():
     CB91_Blue = '#2CBDFE'
     CB91_Green = 'springgreen'
     CB91_Red = '#DA6F6F'
-    n_labeled_data = 4000  # We will train with 250 labeled data to avoid computing many times the CTAugment
+    n_labeled_data = 250  # We will train with 250 labeled data to avoid computing many times the CTAugment
     B = 64  # B from the paper, i.e. number of labeled examples per batch.
     mu = 7  # Hyperparam of Fixmatch determining the relative number of unlabeled examples w.r.t. B * mu
     unlabeled_batch_size = B * mu
@@ -83,6 +83,7 @@ def main():
     initial_training_step = 0  # Start the training epoch from zero
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")  # Create device to perform computations in GPU (if available)
     ema_decay = 0.999
+    weight_decay = 0.0005
     total_training_steps = 2 ** 20  # Number of training epochs, without early stopping (assuming the model
 
     # -----Define WideResNet Architecture-----#
@@ -125,7 +126,7 @@ def main():
     warmup_steps = 10 * (n_complete_batches + 1)  # Define number of warmup steps to avoid premature cyclic learning
 
     # Define Stochastic Gradient Descent
-    optimizer = optim.SGD(model.parameters(), lr=initial_learning_rate, momentum=momentum, nesterov=nesterov_factor, weight_decay=0.0005)
+    optimizer = optim.SGD(model.parameters(), lr=initial_learning_rate, momentum=momentum, nesterov=nesterov_factor, weight_decay=weight_decay)
 
     # Create scheduler that will take charge of warming up and performing learning rate decay
     # LambdaLR: Sets the learning rate of each parameter group to the initial lr times a given function.
