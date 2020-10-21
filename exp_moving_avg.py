@@ -1,53 +1,18 @@
-from __future__ import division
-from __future__ import unicode_literals
+# Function obtained from: https://discuss.pytorch.org/t/how-to-apply-exponential-moving-average-decay-for-variables/10856/3
 
-import torch
+class EMA():
+    def __init__(self, mu, device):
+        self.mu = mu
+        self.shadow = {}
+        self.device = device
 
+    def register(self, name, val):
+        self.shadow[name] = val.clone()
 
-# Partially based on: https://github.com/fadel/pytorch_ema
-class EMA:
-    """
-    Maintains (exponential) moving average of a set of parameters.
-    """
-    def __init__(self, parameters, decay, use_num_updates=True):
-        """
-        Args:
-          parameters: Iterable of `torch.nn.Parameter`; usually the result of
-            `model.parameters()`.
-          decay: The exponential decay.
-          use_num_updates: Whether to use number of updates when computing
-            averages.
-        """
-        if decay < 0.0 or decay > 1.0:
-            raise ValueError('Decay must be between 0 and 1')
-        self.decay = decay
-        self.shadow_params = [p.clone().detach() for p in parameters if p.requires_grad]
-
-    def update(self, parameters):
-        """
-        Update currently maintained parameters.
-        Call this every time the parameters are updated, such as the result of
-        the `optimizer.step()` call.
-        Args:
-          parameters: Iterable of `torch.nn.Parameter`; usually the same set of
-            parameters used to initialize this object.
-        """
-        with torch.no_grad():
-            parameters = [p for p in parameters if p.requires_grad]
-            for s_param, param in zip(self.shadow_params, parameters):
-                s_param = (1.0 - self.decay) * param + self.decay * s_param
-
-    def copy_to(self, parameters):
-        """
-        Copies current parameters into given collection of parameters.
-        Args: 
-          parameters: Iterable of `torch.nn.Parameter`; the parameters to be
-            updated with the stored moving averages.
-        """
-        for s_param, param in zip(self.shadow_params, parameters):
-            if param.requires_grad:
-                param.data.copy_(s_param.data)
-
-
+    def __call__(self, name, x):
+        assert name in self.shadow
+        new_average = (1.0 - self.mu) * x + self.mu * self.shadow[name].to(self.device)
+        self.shadow[name] = new_average.clone()
+        return new_average
 
 

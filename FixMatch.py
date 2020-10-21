@@ -83,7 +83,7 @@ def main():
     initial_training_step = 0  # Start the training epoch from zero
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")  # Create device to perform computations in GPU (if available)
     ema_decay = 0.999
-    weight_decay = 0.0005
+    weight_decay=0.0005
     total_training_steps = 2 ** 20  # Number of training epochs, without early stopping (assuming the model
 
     # -----Define WideResNet Architecture-----#
@@ -99,10 +99,12 @@ def main():
     model = wrn.WideResNet(d=wrn_depth, k=wrn_width, n_classes=n_classes, input_features=channels,
                            output_features=16, strides=strides)
 
-    model.to(device)
+    ema = EMA(ema_decay, device)
+    for name, param in model.named_parameters():
+        if param.requires_grad:
+            ema.register(name, param.data)
 
-    # Build Exponential Moving Average
-    ema = EMA(model.parameters(), decay=ema_decay)
+    model.to(device)
 
     # Analyze the training process
     acc_ema = []
@@ -223,10 +225,10 @@ def main():
             scheduler.step()
 
             # Update EMA parameters
-            ema.update(model.parameters())
+            for name, param in model.named_parameters():
+                if param.requires_grad:
+                    param.data = ema(name, param.data)
 
-        # Sync Model with last EMA
-        ema.copy_to(model.parameters())
 
         # Test and compute the accuracy for the current model and exponential moving average
         model.zero_grad()
