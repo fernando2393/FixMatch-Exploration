@@ -99,10 +99,7 @@ def main():
     model = wrn.WideResNet(d=wrn_depth, k=wrn_width, n_classes=n_classes, input_features=channels,
                            output_features=16, strides=strides)
 
-    ema = EMA(ema_decay, device)
-    for name, param in model.named_parameters():
-        if param.requires_grad:
-            ema.register(name, param.data)
+
 
     model.to(device)
 
@@ -223,11 +220,17 @@ def main():
 
             # Update learning rate
             scheduler.step()
-
-            # Update EMA parameters
-            for name, param in model.named_parameters():
-                if param.requires_grad:
-                    param.data = ema(name, param.data)
+            
+            if epoch == 10:
+                ema = EMA(ema_decay, device)
+                for name, param in model.named_parameters():
+                    if param.requires_grad:
+                        ema.register(name, param.data)
+            elif epoch > 10:
+                # Update EMA parameters
+                for name, param in model.named_parameters():
+                    if param.requires_grad:
+                        param.data = ema(name, param.data)
 
 
         # Test and compute the accuracy for the current model and exponential moving average
