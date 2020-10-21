@@ -98,12 +98,10 @@ def main():
     model = wrn.WideResNet(d=wrn_depth, k=wrn_width, n_classes=n_classes, input_features=channels,
                            output_features=16, strides=strides)
 
-    ema = EMA(ema_decay, device)
-    for name, param in model.named_parameters():
-        if param.requires_grad:
-            ema.register(name, param.data)
-
     model.to(device)
+
+    # Build Exponential Moving Average
+    ema = EMA(model.parameters(), decay=ema_decay)
 
     # Analyze the training process
     acc_ema = []
@@ -224,10 +222,10 @@ def main():
             scheduler.step()
 
             # Update EMA parameters
-            for name, param in model.named_parameters():
-                if param.requires_grad:
-                    param.data = ema(name, param.data)
+            ema.update(model.parameters())
 
+        # Sync Model with last EMA
+        ema.copy_to(model.parameters())
 
         # Test and compute the accuracy for the current model and exponential moving average
         model.zero_grad()
