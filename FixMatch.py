@@ -253,11 +253,12 @@ def main():
             final_model = model
             string = './best_model/final_model_.pt'
             f = open("best_model_description.txt", "w+")
-            f.write("Best model corresponds to epoch: " + str(epoch))
-            f.write("The parameters were:")
-            f.write("n_labeled_data = " + str(n_labeled_data))
-            f.write("B = " + str(B))
-            f.write("mu = " + str(mu))
+            f.write("Best model corresponds to epoch: " + str(epoch) + '\n')
+            f.write("Accuracy is: " + str(best_acc) + '\n')
+            f.write("The parameters were:\n")
+            f.write("n_labeled_data = " + str(n_labeled_data) + '\n')
+            f.write("B = " + str(B) + '\n')
+            f.write("mu = " + str(mu) + '\n')
             torch.save(final_model, string)
         if epoch % 10 == 0 and epoch != 0:
             epoch_range = range(epoch + 1)

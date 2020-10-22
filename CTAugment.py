@@ -125,5 +125,10 @@ def augment(cta, probe=True):
     return myfun
 
 
+def cutout_strong(level=1):
+    def myfun_cutout(x):
+        transformed_image = Transformations.cutout(x, level)
+        return transformed_image
 
+    return myfun_cutout
 

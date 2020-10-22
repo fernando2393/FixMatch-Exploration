@@ -7,7 +7,7 @@ import torch
 from FixMatch import DATA_ROOT
 from torchvision import datasets
 from torchvision import transforms
-from CTAugment import augment
+from CTAugment import augment, cutout_strong
 
 # Pre-defining mean and std for the datasets to reduce computational time
 CIFAR10_mean = (0.4914, 0.4822, 0.4465)
@@ -31,12 +31,11 @@ def weakly_augmentation(mean, std):
     # Perform weak transformation on labeled and unlabeled training images
     weak_transform = transforms.Compose([
         transforms.RandomHorizontalFlip(),
-        transforms.RandomCrop(size=32,
-                              padding=int(32 * 0.125),
-                              padding_mode='reflect'),
+        transforms.RandomAffine(degrees=0, translate = (0.125, 0.125)),
         transforms.ToTensor(),
         transforms.Normalize(mean=mean, std=std)
     ])
+
     return weak_transform
 
 
@@ -44,8 +43,6 @@ def cta_augmentation_labeled_data(mean, std, cta):
     # Perform weak transformation on labeled and unlabeled training images
 
     cta_transform = transforms.Compose([
-        transforms.RandomHorizontalFlip(),
-        transforms.RandomCrop(size=32, padding=int(32 * 0.125), padding_mode='reflect'),
         augment(cta, True),
         transforms.ToTensor(),
         transforms.Normalize(mean=mean, std=std)
@@ -125,9 +122,8 @@ class SSLTransform(object):
         self.weakly = weakly_augmentation(mean, std)
         # Strongly Data Augmentation
         self.strongly = transforms.Compose([
-            transforms.RandomHorizontalFlip(),
-            transforms.RandomCrop(size=32, padding=int(32 * 0.125), padding_mode='reflect'),
             augment(cta, False),
+            cutout_strong(level=1),
             transforms.ToTensor(),
             transforms.Normalize(mean=mean, std=std)
         ])
