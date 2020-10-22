@@ -4,6 +4,7 @@ from PIL import Image
 
 # Access CIFAR-10, MNIST and SVHN
 import torch
+from FixMatch import DATA_ROOT
 from torchvision import datasets
 from torchvision import transforms
 from CTAugment import augment
@@ -52,7 +53,8 @@ def cta_augmentation_labeled_data(mean, std, cta):
     return cta_transform
 
 
-def split_labeled_unlabeled(num_labeled, n_classes, labels, balanced_split=True):
+def split_labeled_unlabeled(num_labeled, n_classes, labels, balanced_split=True, unbalance=0, unbalanced_proportion=1.0,
+                            sample_proportion=1):
     labeled_indeces = []
     unlabeled_indeces = []
     if balanced_split:
@@ -63,18 +65,28 @@ def split_labeled_unlabeled(num_labeled, n_classes, labels, balanced_split=True)
             tmp_indeces = np.where(labels == i)[0]
             np.random.shuffle(tmp_indeces)
             labeled_indeces.extend(tmp_indeces[:lsamples_per_class])
-            unlabeled_indeces.extend(tmp_indeces[lsamples_per_class:])
+            unlabeled_indeces.extend(tmp_indeces[lsamples_per_class:int(len(tmp_indeces)*sample_proportion)])
 
     else:
-        print("TO DO: DEFINE UNBALANCED DATA SETS")
-        exit(0)
+        lsamples_per_class = num_labeled // n_classes
+        downsampled_class = int(lsamples_per_class * unbalanced_proportion)
+        for i in range(n_classes):
+            tmp_indeces = np.where(labels == i)[0]
+            np.random.shuffle(tmp_indeces)
+            if i == unbalance:
+                labeled_indeces.extend(tmp_indeces[:downsampled_class])
+                unlabeled_indeces.extend(tmp_indeces[downsampled_class:int(len(tmp_indeces)*sample_proportion)])
+            else:
+                labeled_indeces.extend(tmp_indeces[:lsamples_per_class])
+                unlabeled_indeces.extend(tmp_indeces[lsamples_per_class:int(len(tmp_indeces)*sample_proportion)])
 
     return labeled_indeces, unlabeled_indeces
 
 
-def applyTransformations(root, labeled_indeces_extension, labeled_indeces ,unlabeled_indeces, mean, std, cta):
+def applyTransformations(root, labeled_indeces_extension, labeled_indeces, unlabeled_indeces, mean, std, cta):
     # Transform label data -> weak transformation
-    train_labeled_data = DataTransformation(root, labeled_indeces_extension, train=True, transform=weakly_augmentation(mean, std))
+    train_labeled_data = DataTransformation(root, labeled_indeces_extension, train=True,
+                                            transform=weakly_augmentation(mean, std))
 
     # Transform label data -> strong transformation (CTA)
     train_labeled_data_cta = DataTransformation(root, labeled_indeces, train=True,
@@ -127,26 +139,42 @@ class SSLTransform(object):
 
 
 # -----LOADING DATA----- #
-# Load CIFAR-10
-def load_cifar10(root, num_labeled):
-    # Import data and define labels
-    raw_data = datasets.CIFAR10(root, train=True, download=True)
+def dataset_loader(dataset, num_labeled, balanced_split=True, unbalance=0, unbalanced_proportion=1,
+                   sample_proportion=1):
+    raw_data = None
+    if dataset == 'CIFAR-10':
+        raw_data = datasets.CIFAR10(DATA_ROOT, train=True, download=True)
+    elif dataset == 'MNIST':
+        raw_data = datasets.MNIST(DATA_ROOT, train=True, download=True)
+    elif dataset == 'SVHN':
+        raw_data = datasets.SVHN(DATA_ROOT, split='train', download=True)
+    else:
+        print("Wrong dataset name")
+        exit(0)
+
     labels = np.array(raw_data.targets)
+    test_data = None
 
-    # Import test data
-    test_data = datasets.CIFAR10(root, train=False, transform=tensor_normalizer(mean=CIFAR10_mean, std=CIFAR10_std),
-                                 download=False)
+    if dataset == 'CIFAR-10':
+        test_data = datasets.CIFAR10(DATA_ROOT, train=False, transform=tensor_normalizer(mean=CIFAR10_mean, std=CIFAR10_std),
+                                     download=False)
+    elif dataset == 'MNIST':
+        test_data = datasets.MNIST(DATA_ROOT, train=True, transform=tensor_normalizer(mean=MNIST_mean, std=MNIST_std),
+                                   download=False)
+    elif dataset == 'SVHN':
+        test_data = datasets.SVHN(DATA_ROOT, split='test', transform=tensor_normalizer(mean=SVHN_mean, std=SVHN_std),
+                                  download=False)
+    else:
+        exit(0)
 
-    # split data into labeled and unlabeled
     labeled_indeces, unlabeled_indeces = split_labeled_unlabeled(
         num_labeled,
         n_classes=10,
         labels=labels,
-        balanced_split=True
+        balanced_split=balanced_split,
+        unbalance=unbalance,
+        unbalanced_proportion=unbalanced_proportion,
+        sample_proportion=sample_proportion
     )
 
     return labeled_indeces, unlabeled_indeces, test_data
-
-# Load SVHN
-
-# Load MNIST

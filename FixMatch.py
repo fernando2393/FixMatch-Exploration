@@ -111,7 +111,9 @@ def main():
     unsupervised_ratio_list = []
 
     # Query datasets
-    labeled_indeces, unlabeled_indeces, test_data = load_cifar10(DATA_ROOT, n_labeled_data)
+    # 'sample_proportion' has to go in between 0 and 1
+    labeled_indeces, unlabeled_indeces, test_data = dataset_loader('CIFAR-10', num_labeled=n_labeled_data,
+                                                                   balanced_split=True)
 
     # Reshape indeces to have the same number of batches
     n_unlabeled_images = len(unlabeled_indeces) # CIFAR - 49750 unlabeled for 250 labeled
