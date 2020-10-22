@@ -81,9 +81,10 @@ def main():
     total_training_epochs = 2 ** 10  # Number of training epochs, without early stopping (assuming the model
     # expects to see 2^26 images during the whole training)
     initial_training_step = 0  # Start the training epoch from zero
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")  # Create device to perform computations in GPU (if available)
+    device = torch.device(
+        "cuda:0" if torch.cuda.is_available() else "cpu")  # Create device to perform computations in GPU (if available)
     ema_decay = 0.999
-    weight_decay=0.0005
+    weight_decay = 0.0005
     total_training_steps = 2 ** 20  # Number of training epochs, without early stopping (assuming the model
 
     # -----Define WideResNet Architecture-----#
@@ -98,8 +99,6 @@ def main():
     # Create Wide - ResNet based on the data set characteristics
     model = wrn.WideResNet(d=wrn_depth, k=wrn_width, n_classes=n_classes, input_features=channels,
                            output_features=16, strides=strides)
-
-
 
     model.to(device)
 
@@ -116,18 +115,19 @@ def main():
                                                                    balanced_split=True)
 
     # Reshape indeces to have the same number of batches
-    n_unlabeled_images = len(unlabeled_indeces) # CIFAR - 49750 unlabeled for 250 labeled
-    n_complete_batches = (n_unlabeled_images // unlabeled_batch_size) # Number of complete batches 111
-    n_images_in_complete_batches = n_complete_batches * B # 7104
-    n_labeles_times = (n_images_in_complete_batches // n_labeled_data) # 28
-    reminder = (n_images_in_complete_batches % n_labeled_data) + B # 104 + batch size
+    n_unlabeled_images = len(unlabeled_indeces)  # CIFAR - 49750 unlabeled for 250 labeled
+    n_complete_batches = (n_unlabeled_images // unlabeled_batch_size)  # Number of complete batches 111
+    n_images_in_complete_batches = n_complete_batches * B  # 7104
+    n_labeles_times = (n_images_in_complete_batches // n_labeled_data)  # 28
+    reminder = (n_images_in_complete_batches % n_labeled_data) + B  # 104 + batch size
     labeled_indeces_extension = []
     labeled_indeces_extension.extend(labeled_indeces * n_labeles_times)
     labeled_indeces_extension.extend(labeled_indeces[:reminder])
     warmup_steps = 10 * (n_complete_batches + 1)  # Define number of warmup steps to avoid premature cyclic learning
 
     # Define Stochastic Gradient Descent
-    optimizer = optim.SGD(model.parameters(), lr=initial_learning_rate, momentum=momentum, nesterov=nesterov_factor, weight_decay=weight_decay)
+    optimizer = optim.SGD(model.parameters(), lr=initial_learning_rate, momentum=momentum, nesterov=nesterov_factor,
+                          weight_decay=weight_decay)
 
     # Create scheduler that will take charge of warming up and performing learning rate decay
     # LambdaLR: Sets the learning rate of each parameter group to the initial lr times a given function.
@@ -169,7 +169,6 @@ def main():
                                         drop_last=True,
                                         pin_memory=True)
 
-
     # Compute best accuracy
     best_acc = 0
 
@@ -188,8 +187,9 @@ def main():
         # Initialize epoch training
         # Train per batch
         full_train_data = zip(labeled_train_data, unlabeled_train_data)
-        for batch_idx, ((labeled_image_batch, labeled_targets), (unlabeled_image_batch, unlabeled_targets)) in enumerate(full_train_data):
-
+        for batch_idx, (
+        (labeled_image_batch, labeled_targets), (unlabeled_image_batch, unlabeled_targets)) in enumerate(
+                full_train_data):
             # Current learning rate to compute the loss combination
             lambda_unsupervised = 1
 
@@ -199,14 +199,14 @@ def main():
             # Train model, update weights per epoch based on the combination of labeled and unlabeled losses
             model.train()
             semi_supervised_loss, supervised_loss, unsupervised_loss, unsupervised_ratio = train_fixmatch(model,
-                                                                                    device,
-                                                                                    labeled_image_batch,
-                                                                                    labeled_targets,
-                                                                                    unlabeled_image_batch,
-                                                                                    unlabeled_batch_size,
-                                                                                    lambda_unsupervised,
-                                                                                    pseudo_label_threshold
-                                                                                    )
+                                                                                                          device,
+                                                                                                          labeled_image_batch,
+                                                                                                          labeled_targets,
+                                                                                                          unlabeled_image_batch,
+                                                                                                          unlabeled_batch_size,
+                                                                                                          lambda_unsupervised,
+                                                                                                          pseudo_label_threshold
+                                                                                                          )
 
             # Update the weights
             semi_supervised_loss.backward()
@@ -222,18 +222,17 @@ def main():
 
             # Update learning rate
             scheduler.step()
-            
-            if epoch == 10:
-                ema = EMA(ema_decay, device)
-                for name, param in model.named_parameters():
-                    if param.requires_grad:
-                        ema.register(name, param.data)
-            elif epoch > 10:
-                # Update EMA parameters
-                for name, param in model.named_parameters():
-                    if param.requires_grad:
-                        param.data = ema(name, param.data)
 
+            # if epoch == 10:
+            #   ema = EMA(ema_decay, device)
+            #    for name, param in model.named_parameters():
+        #         if param.requires_grad:
+        #            ema.register(name, param.data)
+        # elif epoch > 10:
+        # Update EMA parameters
+        #   for name, param in model.named_parameters():
+        #       if param.requires_grad:
+        #           param.data = ema(name, param.data)
 
         # Test and compute the accuracy for the current model and exponential moving average
         model.zero_grad()
@@ -263,30 +262,34 @@ def main():
         if epoch % 10 == 0 and epoch != 0:
             epoch_range = range(epoch + 1)
             # Plot Accuracy
-            plot_performance('EMA Performance', 'Epochs', 'Accuracy', epoch_range, acc_ema, CB91_Blue)
-            plt.savefig('Accuracy250.png')
+            plot_performance('Performance', 'Epochs', 'Accuracy', epoch_range, acc_ema, CB91_Blue)
+            string_name = "Accuracy" + str(n_labeled_data) + ".png"
+            plt.savefig(string_name)
             plt.close()
 
             # Plot Losses
-            plot_performance('Semi Supervised Loss', 'Epochs', 'Loss', epoch_range, semi_supervised_loss_list, CB91_Blue)
+            plot_performance('Semi Supervised Loss', 'Epochs', 'Loss', epoch_range, semi_supervised_loss_list,
+                             CB91_Blue)
             plot_performance('Supervised Loss', 'Epochs', 'Loss', epoch_range, supervised_loss_list, CB91_Green)
             plot_performance('Unsupervised Loss', 'Epochs', 'Loss', epoch_range, unsupervised_loss_list, CB91_Red)
-            plt.savefig('Loss250.png')
+            string_name = "Loss" + str(n_labeled_data) + ".png"
+            plt.savefig(string_name)
             plt.close()
-
 
     epoch_range = range(total_training_epochs)
 
     # Plot Accuracy
-    plot_performance('EMA Performance', 'Epochs', 'Accuracy', epoch_range, acc_ema, CB91_Blue)
-    plt.savefig('Accuracy250.png')
+    plot_performance('Performance', 'Epochs', 'Accuracy', epoch_range, acc_ema, CB91_Blue)
+    string_name = "Accuracy" + str(n_labeled_data) + ".png"
+    plt.savefig(string_name)
     plt.close()
 
     # Plot Losses
     plot_performance('Semi Supervised Loss', 'Epochs', 'Loss', epoch_range, semi_supervised_loss_list, CB91_Blue)
     plot_performance('Supervised Loss', 'Epochs', 'Loss', epoch_range, supervised_loss_list, CB91_Green)
     plot_performance('Unsupervised Loss', 'Epochs', 'Loss', epoch_range, unsupervised_loss_list, CB91_Red)
-    plt.savefig('Loss250.png')
+    string_name = "Loss" + str(n_labeled_data) + ".png"
+    plt.savefig(string_name)
     plt.close()
 
 
