@@ -38,9 +38,6 @@ def unsupervised_train(model, device, unlabeled_image_batch, unlabeled_batch_siz
     # Assign Pseudo-labels and mask them based on threshold
     pseudo_labels, masked_indeces = pseudo_labeling(model, weakly_augment_inputs.to(device), threshold)
 
-    # Start training
-    model.train()
-
     # Declare ratio
     unsupervised_ratio = 0
 
@@ -63,8 +60,7 @@ def unsupervised_train(model, device, unlabeled_image_batch, unlabeled_batch_siz
 
 def pseudo_labeling(model, weakly_augment_inputs, threshold):
 
-    # Set model to eval so it won't change the gradients based on the pseudo-labels
-    model.eval()
+    # Set model to no grad so it won't change the gradients based on the pseudo-labels
     with torch.no_grad():
         logits = model(weakly_augment_inputs)[0]
 

@@ -175,9 +175,6 @@ def main():
     for epoch in tqdm(range(total_training_epochs)):
         print('TRAINING epoch', epoch + 1)
 
-        # Update of CTA
-        cta.update_CTA(model, labeled_train_cta_data, device)
-
         # Declare lists of training
         semi_supervised_loss_list_tmp = []
         supervised_loss_list_tmp = []
@@ -187,9 +184,12 @@ def main():
         # Initialize epoch training
         # Train per batch
         full_train_data = zip(labeled_train_data, unlabeled_train_data)
-        for batch_idx, (
-        (labeled_image_batch, labeled_targets), (unlabeled_image_batch, unlabeled_targets)) in enumerate(
-                full_train_data):
+        for batch_idx, ((labeled_image_batch, labeled_targets), (unlabeled_image_batch, unlabeled_targets)) in enumerate(full_train_data):
+            
+            # Update of CTA
+            if (batch_idx % 15) == 0:
+                cta.update_CTA(model, labeled_train_cta_data, device)
+            
             # Current learning rate to compute the loss combination
             lambda_unsupervised = 1
 
@@ -223,16 +223,17 @@ def main():
             # Update learning rate
             scheduler.step()
 
-            # if epoch == 10:
-            #   ema = EMA(ema_decay, device)
-            #    for name, param in model.named_parameters():
-        #         if param.requires_grad:
-        #            ema.register(name, param.data)
-        # elif epoch > 10:
-        # Update EMA parameters
-        #   for name, param in model.named_parameters():
-        #       if param.requires_grad:
-        #           param.data = ema(name, param.data)
+            # Create EMA after warmpup
+            if epoch == 10:
+                ema = EMA(ema_decay, device)
+                for name, param in model.named_parameters():
+                    if param.requires_grad:
+                        ema.register(name, param.data)
+            elif epoch > 10:
+                # Update EMA parameters
+                for name, param in model.named_parameters():
+                    if param.requires_grad:
+                        ema(name, param.data)
 
         # Test and compute the accuracy for the current model and exponential moving average
         model.zero_grad()
@@ -259,6 +260,7 @@ def main():
             f.write("B = " + str(B) + '\n')
             f.write("mu = " + str(mu) + '\n')
             torch.save(final_model, string)
+
         if epoch % 10 == 0 and epoch != 0:
             epoch_range = range(epoch + 1)
             # Plot Accuracy
@@ -291,6 +293,10 @@ def main():
     string_name = "Loss" + str(n_labeled_data) + ".png"
     plt.savefig(string_name)
     plt.close()
+
+    # Print final performance with EMA
+    acc_ema_final = test_fixmatch(ema, test_loader, B, device)
+    print("Final EMA Performance: ", acc_ema_final)
 
 
 if __name__ == "__main__":
