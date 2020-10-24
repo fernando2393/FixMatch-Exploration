@@ -60,7 +60,7 @@ def main():
     CB91_Blue = '#2CBDFE'
     CB91_Green = 'springgreen'
     CB91_Red = '#DA6F6F'
-    n_labeled_data = 1000  # We will train with 250 labeled data to avoid computing many times the CTAugment
+    n_labeled_data = 250  # We will train with 250 labeled data to avoid computing many times the CTAugment
     B = 64  # B from the paper, i.e. number of labeled examples per batch.
     mu = 7  # Hyperparam of Fixmatch determining the relative number of unlabeled examples w.r.t. B * mu
     unlabeled_batch_size = B * mu
@@ -101,8 +101,7 @@ def main():
     # Query datasets
     # 'sample_proportion' has to go in between 0 and 1
     labeled_indeces, unlabeled_indeces, test_data = dataset_loader(cts.DATASET[0], num_labeled=n_labeled_data,
-                                                                   balanced_split=False, unbalance=3,
-                                                                   unbalanced_proportion=1.5)
+                                                                   balanced_split=True)
 
     # Reshape indeces to have the same number of batches
     n_unlabeled_images = len(unlabeled_indeces)  # CIFAR - 49750 unlabeled for 250 labeled
@@ -243,7 +242,7 @@ def main():
             print('Accuracy of ema', acc_ema[-1])
             acc_comparison = np.mean(acc_ema[-1])
         else:
-            acc_ema.append(acc_ema_tmp)
+            acc_ema.append(acc_ema_tmp.item())
             print('Accuracy of ema', acc_ema[-1])
             acc_comparison = acc_ema[-1]
         if acc_comparison > best_acc:
@@ -254,7 +253,11 @@ def main():
             string = './best_model/final_model_.pt'
             f = open("best_model_description.txt", "w+")
             f.write("Best model corresponds to epoch: " + str(epoch) + '\n')
-            f.write("Accuracy is: " + str(best_acc) + '\n')
+            if cts.DATASET[0] == "SVHN":
+                for c in range(cts.DATASET[4]):
+                    f.write("Accuracy class " + str(c) + " is: " + str(np.array(acc_ema)[-1, c]) + '\n')
+            else:
+                f.write("Accuracy is: " + str(best_acc) + '\n')
             f.write("The parameters were:\n")
             f.write("n_labeled_data = " + str(n_labeled_data) + '\n')
             f.write("B = " + str(B) + '\n')
