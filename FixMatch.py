@@ -1,32 +1,18 @@
 import random
-import numpy as np
+import torch
 import matplotlib.pyplot as plt
 import torch.backends.cudnn as cudnn
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 from tqdm import tqdm
-import torch.distributed as dist
+from train import train_fixmatch, test_fixmatch
 import CTAugment as ctaug
 from data.data_loader import *
 import torch.optim as optim
-from train import *
 from exp_moving_avg import EMA
 from WideResNet_PyTorch.src import WideResNet as wrn
-from torchvision import datasets
 import os
-
-DATA_ROOT = './data'
-# Pre-defining mean and std for the datasets to reduce computational time
-CIFAR10_mean = (0.4914, 0.4822, 0.4465)
-CIFAR10_std = (0.2471, 0.2435, 0.2616)
-MNIST_mean = 0.1307
-MNIST_std = 0.3081
-SVHN_mean = (0.4377, 0.4438, 0.4728)
-SVHN_std = (0.1980, 0.2010, 0.1970)
-CIFAR = ("CIFAR-10", CIFAR10_mean, CIFAR10_std, datasets.CIFAR10, 10)
-MNIST = ("MNIST", MNIST_mean, MNIST_std, datasets.MNIST, 10)
-SVHN = ("SVHN", SVHN_mean, SVHN_std, datasets.SVHN, 10)
-DATASET = SVHN  # Replace by the proper dataset
+import Constants as cts
 
 
 # -----SET RANDOMNESS----- #
@@ -100,7 +86,7 @@ def main():
     # -----START MODEL----- #
 
     # Create Wide - ResNet based on the data set characteristics
-    model = wrn.WideResNet(d=wrn_depth, k=wrn_width, n_classes=DATASET[4], input_features=channels,
+    model = wrn.WideResNet(d=wrn_depth, k=wrn_width, n_classes=cts.DATASET[4], input_features=channels,
                            output_features=16, strides=strides)
 
     model.to(device)
@@ -114,7 +100,7 @@ def main():
 
     # Query datasets
     # 'sample_proportion' has to go in between 0 and 1
-    labeled_indeces, unlabeled_indeces, test_data = dataset_loader(DATASET[0], num_labeled=n_labeled_data,
+    labeled_indeces, unlabeled_indeces, test_data = dataset_loader(cts.DATASET[0], num_labeled=n_labeled_data,
                                                                    balanced_split=True)
 
     # Reshape indeces to have the same number of batches
@@ -143,12 +129,12 @@ def main():
     cta = ctaug.CTAugment(depth=2, t=0.8, ro=0.99)
 
     # Apply transformations
-    labeled_dataset, unlabeled_dataset, train_label_cta = applyTransformations(DATA_ROOT,
+    labeled_dataset, unlabeled_dataset, train_label_cta = applyTransformations(cts.DATA_ROOT,
                                                                                labeled_indeces_extension,
                                                                                labeled_indeces,
                                                                                unlabeled_indeces,
-                                                                               DATASET[1],
-                                                                               DATASET[2],
+                                                                               cts.DATASET[1],
+                                                                               cts.DATASET[2],
                                                                                cta)
 
     # Load datasets

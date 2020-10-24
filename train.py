@@ -1,16 +1,18 @@
 import torch
 import numpy as np
 from torch.nn import CrossEntropyLoss
-from FixMatch import DATASET
+import Constants as cts
+
 
 # -----TRAINING----- #
-def train_fixmatch(model, device, labeled_image_batch, labeled_targets_batch, unlabeled_image_batch, unlabeled_batch_size, lambda_unsupervised, threshold):
-
+def train_fixmatch(model, device, labeled_image_batch, labeled_targets_batch, unlabeled_image_batch,
+                   unlabeled_batch_size, lambda_unsupervised, threshold):
     # Compute loss for labeled data (mean loss of images)
     supervised_loss = supervised_train(model, device, labeled_image_batch, labeled_targets_batch)
 
     # Compute loss of unlabeled_data (mean loss of images)
-    unsupervised_loss, unsupervised_ratio = unsupervised_train(model, device, unlabeled_image_batch, unlabeled_batch_size, threshold)
+    unsupervised_loss, unsupervised_ratio = unsupervised_train(model, device, unlabeled_image_batch,
+                                                               unlabeled_batch_size, threshold)
 
     # Compute the total loss (SSL loss)
     semi_supervised_loss = supervised_loss + lambda_unsupervised * unsupervised_loss
@@ -19,14 +21,13 @@ def train_fixmatch(model, device, labeled_image_batch, labeled_targets_batch, un
 
 
 def supervised_train(model, device, inputs, targets):
-
     # Make predictions
     predictions = model(inputs.to(device))[0]  # Item 0 -> Output. Items 1, 2, 3 -> Attention
 
     # Compute loss of batch
     criterion = CrossEntropyLoss()
     supervised_loss = criterion(predictions, targets.long().to(device))
-    
+
     # Free space
     del predictions
 
@@ -44,7 +45,7 @@ def unsupervised_train(model, device, unlabeled_image_batch, unlabeled_batch_siz
     unsupervised_ratio = 0
 
     if True not in masked_indeces:
-        unsupervised_loss = torch.tensor(0.0) # 0 if no image surpassed the threshold
+        unsupervised_loss = torch.tensor(0.0)  # 0 if no image surpassed the threshold
     else:
         # Compute predictions for strongly augmented images
         augment_with_pseudolabels = strongly_augment_inputs[masked_indeces]
@@ -52,7 +53,8 @@ def unsupervised_train(model, device, unlabeled_image_batch, unlabeled_batch_siz
 
         # Compute loss of batch
         criterion_unsupervised = CrossEntropyLoss(reduction='sum')
-        unsupervised_loss = criterion_unsupervised(strongly_predictions, pseudo_labels[masked_indeces].to(device)) / unlabeled_batch_size
+        unsupervised_loss = criterion_unsupervised(strongly_predictions,
+                                                   pseudo_labels[masked_indeces].to(device)) / unlabeled_batch_size
 
         # Compute number of unsupervised images used
         unsupervised_ratio = sum(masked_indeces.tolist()) / len(masked_indeces.tolist())
@@ -61,7 +63,6 @@ def unsupervised_train(model, device, unlabeled_image_batch, unlabeled_batch_siz
 
 
 def pseudo_labeling(model, weakly_augment_inputs, threshold):
-
     # Set model to no grad so it won't change the gradients based on the pseudo-labels
     with torch.no_grad():
         logits = model(weakly_augment_inputs)[0]
@@ -87,7 +88,7 @@ def test_fixmatch(ema, test_data, device):
     ema.eval()
     with torch.no_grad():
         n_batches = 0
-        if DATASET[0] != "SVHN":
+        if cts.DATASET[0] != "SVHN":
             for batch_idx, img_batch in enumerate(test_data):
                 # Define batch images and labels
                 inputs, targets = img_batch
@@ -120,9 +121,9 @@ def evaluate(logits, targets):
     # Return the predictions
     _, preds = torch.max(logits, dim=1)
 
-    if DATASET[0] == "SVHN":
+    if cts.DATASET[0] == "SVHN":
         accuracy = list()
-        for i in range(DATASET[4]):
+        for i in range(cts.DATASET[4]):
             tmp_indeces = np.where(targets == i)[0]
             match = (targets[tmp_indeces] == preds[tmp_indeces]) * 1
             accuracy.append(torch.mean(match.float()))

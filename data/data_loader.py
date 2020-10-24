@@ -3,11 +3,10 @@ import numpy as np
 from PIL import Image
 
 # Access CIFAR-10, MNIST and SVHN
-from FixMatch import DATA_ROOT
+import Constants as cts
 from torchvision import datasets
 from torchvision import transforms
 from CTAugment import augment, cutout_strong
-from FixMatch import DATASET
 
 # Set randomness reproducibility
 np.random.seed(42)
@@ -21,7 +20,7 @@ def tensor_normalizer(mean, std):
 
 def weakly_augmentation(mean, std):
     # Perform weak transformation on labeled and unlabeled training images
-    if DATASET[0] != "SVHN":
+    if cts.DATASET[0] != "SVHN":
         weak_transform = transforms.Compose([
             transforms.RandomHorizontalFlip(),
             transforms.RandomAffine(degrees=0, translate=(0.125, 0.125)),
@@ -96,7 +95,7 @@ def applyTransformations(root, labeled_indeces_extension, labeled_indeces, unlab
 
 
 # -----CONSTRUCT DATA OBJECTS----- #
-class DataTransformation(DATASET[3]):
+class DataTransformation(cts.DATASET[3]):
     def __init__(self, root, indeces, transform=None, target_transform=None, download=False):
         # Accessing CIFAR10 from torchvision
         super().__init__(root, transform=transform, target_transform=target_transform, download=download)
@@ -145,13 +144,13 @@ def dataset_loader(dataset, num_labeled, balanced_split=True, unbalance=0, unbal
                    sample_proportion=1):
     labels = None
     if dataset == 'CIFAR-10':
-        raw_data = datasets.CIFAR10(DATA_ROOT, train=True, download=True)
+        raw_data = datasets.CIFAR10(cts.DATA_ROOT, train=True, download=True)
         labels = np.array(raw_data.targets)
     elif dataset == 'MNIST':
-        raw_data = datasets.MNIST(DATA_ROOT, train=True, download=True)
+        raw_data = datasets.MNIST(cts.DATA_ROOT, train=True, download=True)
         labels = np.array(raw_data.targets)
     elif dataset == 'SVHN':
-        raw_data = datasets.SVHN(DATA_ROOT, split='train', download=True)
+        raw_data = datasets.SVHN(cts.DATA_ROOT, split='train', download=True)
         labels = np.array(raw_data.labels)
     else:
         print("Wrong dataset name")
@@ -159,14 +158,14 @@ def dataset_loader(dataset, num_labeled, balanced_split=True, unbalance=0, unbal
 
     test_data = None
     if dataset == 'CIFAR-10':
-        test_data = datasets.CIFAR10(DATA_ROOT, train=False,
-                                     transform=tensor_normalizer(mean=DATASET[1], std=DATASET[2]),
+        test_data = datasets.CIFAR10(cts.DATA_ROOT, train=False,
+                                     transform=tensor_normalizer(mean=cts.DATASET[1], std=cts.DATASET[2]),
                                      download=True)
     elif dataset == 'MNIST':
-        test_data = datasets.MNIST(DATA_ROOT, train=True, transform=tensor_normalizer(mean=DATASET[1], std=DATASET[2]),
+        test_data = datasets.MNIST(cts.DATA_ROOT, train=True, transform=tensor_normalizer(mean=cts.DATASET[1], std=cts.DATASET[2]),
                                    download=True)
     elif dataset == 'SVHN':
-        test_data = datasets.SVHN(DATA_ROOT, split='test', transform=tensor_normalizer(mean=DATASET[1], std=DATASET[2]),
+        test_data = datasets.SVHN(cts.DATA_ROOT, split='test', transform=tensor_normalizer(mean=cts.DATASET[1], std=cts.DATASET[2]),
                                   download=True)
     else:
         exit(0)
