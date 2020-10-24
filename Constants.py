@@ -11,4 +11,4 @@ SVHN_std = (0.1980, 0.2010, 0.1970)
 CIFAR = ("CIFAR-10", CIFAR10_mean, CIFAR10_std, datasets.CIFAR10, 10)
 MNIST = ("MNIST", MNIST_mean, MNIST_std, datasets.MNIST, 10)
 SVHN = ("SVHN", SVHN_mean, SVHN_std, datasets.SVHN, 10)
-DATASET = CIFAR  # Replace by the proper dataset
+DATASET = SVHN  # Replace by the proper dataset
