@@ -237,12 +237,14 @@ def main():
         print('Unsupervised ratio', unsupervised_ratio_list[-1])
 
         acc_ema_tmp = test_fixmatch(model, test_loader, device)
-        acc_ema.append([i.item() for i in acc_ema_tmp.tolist()])
-        print('Accuracy of ema', acc_ema[-1])
         # Save best model
         if cts.DATASET[0] == "SVHN":
+            acc_ema.append([i.item() for i in acc_ema_tmp.tolist()])
+            print('Accuracy of ema', acc_ema[-1])
             acc_comparison = np.mean(acc_ema[-1])
         else:
+            acc_ema.append(acc_ema_tmp)
+            print('Accuracy of ema', acc_ema[-1])
             acc_comparison = acc_ema[-1]
         if acc_comparison > best_acc:
             best_acc = acc_comparison
