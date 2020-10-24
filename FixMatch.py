@@ -60,7 +60,7 @@ def main():
     CB91_Blue = '#2CBDFE'
     CB91_Green = 'springgreen'
     CB91_Red = '#DA6F6F'
-    n_labeled_data = 250  # We will train with 250 labeled data to avoid computing many times the CTAugment
+    n_labeled_data = 40  # We will train with 250 labeled data to avoid computing many times the CTAugment
     B = 64  # B from the paper, i.e. number of labeled examples per batch.
     mu = 7  # Hyperparam of Fixmatch determining the relative number of unlabeled examples w.r.t. B * mu
     unlabeled_batch_size = B * mu
@@ -101,7 +101,7 @@ def main():
     # Query datasets
     # 'sample_proportion' has to go in between 0 and 1
     labeled_indeces, unlabeled_indeces, test_data = dataset_loader(cts.DATASET[0], num_labeled=n_labeled_data,
-                                                                   balanced_split=True)
+                                                                   balanced_split=True, sample_proportion=0.25)
 
     # Reshape indeces to have the same number of batches
     n_unlabeled_images = len(unlabeled_indeces)  # CIFAR - 49750 unlabeled for 250 labeled
@@ -131,7 +131,7 @@ def main():
     # Apply transformations
     labeled_dataset, unlabeled_dataset, train_label_cta = applyTransformations(cts.DATA_ROOT,
                                                                                labeled_indeces_extension,
-                                                                               labeled_indeces,
+                                                                               labeled_indeces_extension,
                                                                                unlabeled_indeces,
                                                                                cts.DATASET[1],
                                                                                cts.DATASET[2],
@@ -233,7 +233,7 @@ def main():
         print('Unsupervised Loss', unsupervised_loss_list[-1])
         print('Unsupervised ratio', unsupervised_ratio_list[-1])
 
-        acc_ema_tmp = test_fixmatch(model, test_loader, B, device)
+        acc_ema_tmp = test_fixmatch(model, test_loader, device)
         acc_ema.append(acc_ema_tmp.item())
         print('Accuracy of ema', acc_ema[-1])
         # Save best model
@@ -286,7 +286,7 @@ def main():
     plt.close()
 
     # Print final performance with EMA
-    acc_ema_final = test_fixmatch(ema, test_loader, B, device)
+    acc_ema_final = test_fixmatch(ema, test_loader, device)
     print("Final EMA Performance: ", acc_ema_final)
 
 
