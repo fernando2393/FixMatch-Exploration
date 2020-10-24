@@ -108,7 +108,7 @@ def test_fixmatch(ema, test_data, device):
 
                 # Evaluate method for the ema
                 logits = ema(inputs.to(device))[0]
-                acc_ema_tmp += evaluate(logits, targets.to(device))
+                acc_ema_tmp += evaluate(logits, targets, device)
                 n_batches += 1
 
     # Compute the accuracy average over the batches (size B)
@@ -117,7 +117,7 @@ def test_fixmatch(ema, test_data, device):
     return acc_ema
 
 
-def evaluate(logits, targets):
+def evaluate(logits, targets, device=None):
     # Return the predictions
     _, preds = torch.max(logits, dim=1)
 
@@ -125,8 +125,11 @@ def evaluate(logits, targets):
         accuracy = list()
         for i in range(cts.DATASET[4]):
             tmp_indeces = np.where(targets == i)[0]
-            match = (targets[tmp_indeces] == preds[tmp_indeces]) * 1
-            accuracy.append(torch.mean(match.float()))
+            if len(tmp_indeces) < 1:
+                accuracy.append(torch.tensor(0.0))
+            else:
+                match = (targets[tmp_indeces].to(device) == preds[tmp_indeces]) * 1
+                accuracy.append(torch.mean(match.float()))
 
         return np.array(accuracy)
 

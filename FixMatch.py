@@ -48,7 +48,7 @@ def imshow(img):
     plt.show()
 
 
-def plot_performance(title, x_label, y_label, x_data, y_data, color):
+def plot_performance(title, x_label, y_label, x_data, y_data, color=None):
     plt.plot(x_data, y_data, label=title, c=color)
     plt.xlabel(x_label)
     plt.ylabel(y_label)
@@ -60,7 +60,7 @@ def main():
     CB91_Blue = '#2CBDFE'
     CB91_Green = 'springgreen'
     CB91_Red = '#DA6F6F'
-    n_labeled_data = 250  # We will train with 250 labeled data to avoid computing many times the CTAugment
+    n_labeled_data = 1000  # We will train with 250 labeled data to avoid computing many times the CTAugment
     B = 64  # B from the paper, i.e. number of labeled examples per batch.
     mu = 7  # Hyperparam of Fixmatch determining the relative number of unlabeled examples w.r.t. B * mu
     unlabeled_batch_size = B * mu
@@ -101,7 +101,7 @@ def main():
     # Query datasets
     # 'sample_proportion' has to go in between 0 and 1
     labeled_indeces, unlabeled_indeces, test_data = dataset_loader(cts.DATASET[0], num_labeled=n_labeled_data,
-                                                                   balanced_split=True)
+                                                                   balanced_split=False, unbalance=3, unbalanced_proportion=1.5)
 
     # Reshape indeces to have the same number of batches
     n_unlabeled_images = len(unlabeled_indeces)  # CIFAR - 49750 unlabeled for 250 labeled
@@ -224,6 +224,7 @@ def main():
                     if param.requires_grad:
                         ema(name, param.data)
 
+
         # Test and compute the accuracy for the current model and exponential moving average
         model.zero_grad()
         semi_supervised_loss_list.append(np.mean(semi_supervised_loss_list_tmp))
@@ -233,12 +234,16 @@ def main():
         print('Unsupervised Loss', unsupervised_loss_list[-1])
         print('Unsupervised ratio', unsupervised_ratio_list[-1])
 
-        acc_ema_tmp = test_fixmatch(model, test_loader, B, device)
-        acc_ema.append(acc_ema_tmp.item())
+        acc_ema_tmp = test_fixmatch(model, test_loader, device)
+        acc_ema.append([i.item() for i in acc_ema_tmp.tolist()])
         print('Accuracy of ema', acc_ema[-1])
         # Save best model
-        if acc_ema[-1] > best_acc:
-            best_acc = acc_ema[-1]
+        if cts.DATASET[0] == "SVHN":
+            acc_comparison = np.mean(acc_ema[-1])
+        else:
+            acc_comparison = acc_ema[-1]
+        if acc_comparison > best_acc:
+            best_acc = acc_comparison
             final_model = model
             if not os.path.exists("best_model"):
                 os.mkdir("best_model")
@@ -252,10 +257,28 @@ def main():
             f.write("mu = " + str(mu) + '\n')
             torch.save(final_model, string)
 
-        if epoch % 10 == 0 and epoch != 0:
+        if epoch % 10 == 0 and epoch != 0 and cts.DATASET[0] != "SVHN":
             epoch_range = range(epoch + 1)
             # Plot Accuracy
             plot_performance('Performance', 'Epochs', 'Accuracy', epoch_range, acc_ema, CB91_Blue)
+            string_name = "Accuracy" + str(n_labeled_data) + ".png"
+            plt.savefig(string_name)
+            plt.close()
+
+            # Plot Losses
+            plot_performance('Semi Supervised Loss', 'Epochs', 'Loss', epoch_range, semi_supervised_loss_list,
+                             CB91_Blue)
+            plot_performance('Supervised Loss', 'Epochs', 'Loss', epoch_range, supervised_loss_list, CB91_Green)
+            plot_performance('Unsupervised Loss', 'Epochs', 'Loss', epoch_range, unsupervised_loss_list, CB91_Red)
+            string_name = "Loss" + str(n_labeled_data) + ".png"
+            plt.savefig(string_name)
+            plt.close()
+        elif epoch % 10 == 0 and epoch != 0 and cts.DATASET[0] == "SVHN":
+            epoch_range = range(epoch + 1)
+            # Plot Accuracy
+            for c in range(cts.DATASET[4]):
+                st = "Class " + str(c)
+                plot_performance(st, 'Epochs', 'Accuracy', epoch_range, np.array(acc_ema)[:,c])
             string_name = "Accuracy" + str(n_labeled_data) + ".png"
             plt.savefig(string_name)
             plt.close()
@@ -286,7 +309,7 @@ def main():
     plt.close()
 
     # Print final performance with EMA
-    acc_ema_final = test_fixmatch(ema, test_loader, B, device)
+    acc_ema_final = test_fixmatch(ema, test_loader, device)
     print("Final EMA Performance: ", acc_ema_final)
 
 
