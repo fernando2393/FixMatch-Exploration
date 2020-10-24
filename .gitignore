@@ -150,6 +150,8 @@ fabric.properties
 /data/__pycache__
 /data/cifar-10-batches-py
 /data/cifar-10-python.tar.gz
+/data/test_32x32.mat
+/data/train_32x32.mat
 
 
 # Created by https://www.toptal.com/developers/gitignore/api/python
