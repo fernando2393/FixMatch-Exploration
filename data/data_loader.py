@@ -64,13 +64,16 @@ def split_labeled_unlabeled(num_labeled, n_classes, labels, balanced_split=True,
 
     else:
         lsamples_per_class = num_labeled // n_classes
-        downsampled_class = int(lsamples_per_class * unbalanced_proportion)
+        unbalanced_class = int(lsamples_per_class * unbalanced_proportion)
         for i in range(n_classes):
             tmp_indeces = np.where(labels == i)[0]
             np.random.shuffle(tmp_indeces)
             if i == unbalance:
-                labeled_indeces.extend(tmp_indeces[:downsampled_class])
-                unlabeled_indeces.extend(tmp_indeces[downsampled_class:int(len(tmp_indeces) * sample_proportion)])
+                labeled_indeces.extend(tmp_indeces[:unbalanced_class])
+                if unbalanced_proportion < 1.0:
+                    unlabeled_indeces.extend(tmp_indeces[lsamples_per_class:int(len(tmp_indeces) * sample_proportion)])
+                else:
+                    unlabeled_indeces.extend(tmp_indeces[unbalanced_class:int(len(tmp_indeces) * sample_proportion)])
             else:
                 labeled_indeces.extend(tmp_indeces[:lsamples_per_class])
                 unlabeled_indeces.extend(tmp_indeces[lsamples_per_class:int(len(tmp_indeces) * sample_proportion)])
