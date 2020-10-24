@@ -1,5 +1,7 @@
 import torch
+import numpy as np
 from torch.nn import CrossEntropyLoss
+from FixMatch import DATASET
 
 # -----TRAINING----- #
 def train_fixmatch(model, device, labeled_image_batch, labeled_targets_batch, unlabeled_image_batch, unlabeled_batch_size, lambda_unsupervised, threshold):
@@ -77,7 +79,7 @@ def pseudo_labeling(model, weakly_augment_inputs, threshold):
 
 
 # -----TESTING----- #
-def test_fixmatch(ema, test_data, B, device):
+def test_fixmatch(ema, test_data, device):
     # Compute accuracy for the model and ema
     acc_ema_tmp = 0
 
@@ -85,17 +87,28 @@ def test_fixmatch(ema, test_data, B, device):
     ema.eval()
     with torch.no_grad():
         n_batches = 0
-        for batch_idx, img_batch in enumerate(test_data):
-            # Define batch images and labels
-            inputs, targets = img_batch
+        if DATASET[0] != "SVHN":
+            for batch_idx, img_batch in enumerate(test_data):
+                # Define batch images and labels
+                inputs, targets = img_batch
 
-            # Evaluate method for the ema
-            logits = ema(inputs.to(device))[0]
-            acc_ema_tmp += evaluate(logits, targets.to(device))
-            n_batches += 1
+                # Evaluate method for the ema
+                logits = ema(inputs.to(device))[0]
+                acc_ema_tmp += evaluate(logits, targets.to(device))
+                n_batches += 1
 
-            # Free space
-            del logits
+                # Free space
+                del logits
+
+        else:
+            for batch_idx, img_batch in enumerate(test_data):
+                # Define batch images and labels
+                inputs, targets = img_batch
+
+                # Evaluate method for the ema
+                logits = ema(inputs.to(device))[0]
+                acc_ema_tmp += evaluate(logits, targets.to(device))
+                n_batches += 1
 
     # Compute the accuracy average over the batches (size B)
     acc_ema = acc_ema_tmp / n_batches
@@ -104,9 +117,17 @@ def test_fixmatch(ema, test_data, B, device):
 
 
 def evaluate(logits, targets):
-
     # Return the predictions
     _, preds = torch.max(logits, dim=1)
+
+    if DATASET[0] == "SVHN":
+        accuracy = list()
+        for i in range(DATASET[4]):
+            tmp_indeces = np.where(targets == i)[0]
+            match = (targets[tmp_indeces] == preds[tmp_indeces]) * 1
+            accuracy.append(torch.mean(match.float()))
+
+        return np.array(accuracy)
 
     # Compare the test labels to the predictions
     match = (targets == preds) * 1

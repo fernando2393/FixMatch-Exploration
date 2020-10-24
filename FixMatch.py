@@ -12,9 +12,21 @@ import torch.optim as optim
 from train import *
 from exp_moving_avg import EMA
 from WideResNet_PyTorch.src import WideResNet as wrn
-import torchvision
+from torchvision import datasets
+import os
 
 DATA_ROOT = './data'
+# Pre-defining mean and std for the datasets to reduce computational time
+CIFAR10_mean = (0.4914, 0.4822, 0.4465)
+CIFAR10_std = (0.2471, 0.2435, 0.2616)
+MNIST_mean = 0.1307
+MNIST_std = 0.3081
+SVHN_mean = (0.4377, 0.4438, 0.4728)
+SVHN_std = (0.1980, 0.2010, 0.1970)
+CIFAR = ("CIFAR-10", CIFAR10_mean, CIFAR10_std, datasets.CIFAR10, 10)
+MNIST = ("MNIST", MNIST_mean, MNIST_std, datasets.MNIST, 10)
+SVHN = ("SVHN", SVHN_mean, SVHN_std, datasets.SVHN, 10)
+DATASET = SVHN  # Replace by the proper dataset
 
 
 # -----SET RANDOMNESS----- #
@@ -58,14 +70,6 @@ def plot_performance(title, x_label, y_label, x_data, y_data, color):
 
 
 def main():
-    # Pre-defining mean and std for the datasets to reduce computational time
-    CIFAR10_mean = (0.4914, 0.4822, 0.4465)
-    CIFAR10_std = (0.2471, 0.2435, 0.2616)
-    MNIST_mean = 0.1307
-    MNIST_std = 0.3081
-    SVHN_mean = (0.4377, 0.4438, 0.4728)
-    SVHN_std = (0.1980, 0.2010, 0.1970)
-
     set_seed(42)
     CB91_Blue = '#2CBDFE'
     CB91_Green = 'springgreen'
@@ -90,14 +94,13 @@ def main():
     # -----Define WideResNet Architecture-----#
     wrn_depth = 28
     wrn_width = 2
-    n_classes = 10
     strides = [1, 1, 2, 2]
     channels = 3  # Maybe this has to be changed in order to support grayscale
 
     # -----START MODEL----- #
 
     # Create Wide - ResNet based on the data set characteristics
-    model = wrn.WideResNet(d=wrn_depth, k=wrn_width, n_classes=n_classes, input_features=channels,
+    model = wrn.WideResNet(d=wrn_depth, k=wrn_width, n_classes=DATASET[4], input_features=channels,
                            output_features=16, strides=strides)
 
     model.to(device)
@@ -111,7 +114,7 @@ def main():
 
     # Query datasets
     # 'sample_proportion' has to go in between 0 and 1
-    labeled_indeces, unlabeled_indeces, test_data = dataset_loader('CIFAR-10', num_labeled=n_labeled_data,
+    labeled_indeces, unlabeled_indeces, test_data = dataset_loader(DATASET[0], num_labeled=n_labeled_data,
                                                                    balanced_split=True)
 
     # Reshape indeces to have the same number of batches
@@ -144,8 +147,8 @@ def main():
                                                                                labeled_indeces_extension,
                                                                                labeled_indeces,
                                                                                unlabeled_indeces,
-                                                                               CIFAR10_mean,
-                                                                               CIFAR10_std,
+                                                                               DATASET[1],
+                                                                               DATASET[2],
                                                                                cta)
 
     # Load datasets
@@ -185,11 +188,11 @@ def main():
         # Train per batch
         full_train_data = zip(labeled_train_data, unlabeled_train_data)
         for batch_idx, ((labeled_image_batch, labeled_targets), (unlabeled_image_batch, unlabeled_targets)) in enumerate(full_train_data):
-            
+
             # Update of CTA
             if (batch_idx % 15) == 0:
                 cta.update_CTA(model, labeled_train_cta_data, device)
-            
+
             # Current learning rate to compute the loss combination
             lambda_unsupervised = 1
 
@@ -251,6 +254,8 @@ def main():
         if acc_ema[-1] > best_acc:
             best_acc = acc_ema[-1]
             final_model = model
+            if not os.path.exists("best_model"):
+                os.mkdir("best_model")
             string = './best_model/final_model_.pt'
             f = open("best_model_description.txt", "w+")
             f.write("Best model corresponds to epoch: " + str(epoch) + '\n')
