@@ -103,7 +103,7 @@ def main():
     # 'sample_proportion' has to go in between 0 and 1
     labeled_indeces, unlabeled_indeces, test_data = dataset_loader(cts.DATASET[0], num_labeled=n_labeled_data,
                                                                    balanced_split=False, unbalance=3,
-                                                                   unbalanced_proportion= 1.5)
+                                                                   unbalanced_proportion= 0.5)
 
     # Reshape indeces to have the same number of batches
     n_unlabeled_images = len(unlabeled_indeces)  # CIFAR - 49750 unlabeled for 250 labeled
