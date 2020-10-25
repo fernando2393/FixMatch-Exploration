@@ -1,14 +1,14 @@
-Best model corresponds to epoch: 117
-Accuracy class 0 is: 0.9295169711112976
-Accuracy class 1 is: 0.9671006202697754
-Accuracy class 2 is: 0.9764292240142822
-Accuracy class 3 is: 0.931912362575531
-Accuracy class 4 is: 0.9625809788703918
-Accuracy class 5 is: 0.9626884460449219
-Accuracy class 6 is: 0.9524431824684143
-Accuracy class 7 is: 0.9446860551834106
-Accuracy class 8 is: 0.9370489120483398
-Accuracy class 9 is: 0.9041190147399902
+Best model corresponds to epoch: 1
+Accuracy class 0 is: 0.043027766048908234
+Accuracy class 1 is: 0.12942668795585632
+Accuracy class 2 is: 0.060956284403800964
+Accuracy class 3 is: 0.5759616494178772
+Accuracy class 4 is: 0.06347563117742538
+Accuracy class 5 is: 0.08846130967140198
+Accuracy class 6 is: 0.07920145243406296
+Accuracy class 7 is: 0.07969572395086288
+Accuracy class 8 is: 0.051127102226018906
+Accuracy class 9 is: 0.0010237511014565825
 The parameters were:
 n_labeled_data = 250
 B = 64

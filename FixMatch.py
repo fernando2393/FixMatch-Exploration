@@ -13,6 +13,7 @@ from exp_moving_avg import EMA
 from WideResNet_PyTorch.src import WideResNet as wrn
 import os
 import Constants as cts
+import pickle
 
 
 # -----SET RANDOMNESS----- #
@@ -68,7 +69,7 @@ def main():
     momentum = 0.9  # Momentum to access the Stochastic Gradient Descent
     nesterov_factor = True  # They found that the nesterov hyperparm wasn't necessary to achieve errors below 5%
     pseudo_label_threshold = 0.95  # Threshold to guarantee confidence on the model
-    total_training_epochs = 2 ** 10  # Number of training epochs, without early stopping (assuming the model
+    total_training_epochs = 2  # Number of training epochs, without early stopping (assuming the model
     # expects to see 2^26 images during the whole training)
     initial_training_step = 0  # Start the training epoch from zero
     device = torch.device(
@@ -101,7 +102,8 @@ def main():
     # Query datasets
     # 'sample_proportion' has to go in between 0 and 1
     labeled_indeces, unlabeled_indeces, test_data = dataset_loader(cts.DATASET[0], num_labeled=n_labeled_data,
-                                                                   balanced_split=True)
+                                                                   balanced_split=False, unbalance=3,
+                                                                   unbalanced_proportion= 1.5)
 
     # Reshape indeces to have the same number of batches
     n_unlabeled_images = len(unlabeled_indeces)  # CIFAR - 49750 unlabeled for 250 labeled
@@ -215,7 +217,7 @@ def main():
             scheduler.step()
 
             # Create EMA after warmpup
-            if epoch == 10:
+            if epoch == 0:
                 ema = EMA(ema_decay, device)
                 for name, param in model.named_parameters():
                     if param.requires_grad:
@@ -302,10 +304,20 @@ def main():
     epoch_range = range(total_training_epochs)
 
     # Plot Accuracy
-    plot_performance('Performance', 'Epochs', 'Accuracy', epoch_range, acc_ema, CB91_Blue)
-    string_name = "Accuracy" + str(n_labeled_data) + ".png"
-    plt.savefig(string_name)
-    plt.close()
+
+    if cts.DATASET[0] == 'SVHN':
+        for c in range(cts.DATASET[4]):
+            st = "Class " + str(c)
+            plot_performance(st, 'Epochs', 'Accuracy', epoch_range, np.array(acc_ema)[:, c])
+        string_name = "Accuracy" + str(n_labeled_data) + ".png"
+        plt.savefig(string_name)
+        plt.close()
+
+    else:
+        plot_performance('Performance', 'Epochs', 'Accuracy', epoch_range, acc_ema, CB91_Blue)
+        string_name = "Accuracy" + str(n_labeled_data) + ".png"
+        plt.savefig(string_name)
+        plt.close()
 
     # Plot Losses
     plot_performance('Semi Supervised Loss', 'Epochs', 'Loss', epoch_range, semi_supervised_loss_list, CB91_Blue)
@@ -316,8 +328,16 @@ def main():
     plt.close()
 
     # Print final performance with EMA
-    acc_ema_final = test_fixmatch(ema, test_loader, device)
+    acc_ema_final = test_fixmatch(ema, test_loader, device, last=True)
     print("Final EMA Performance: ", acc_ema_final)
+
+    # Saving EMA model
+    with open("EMA.pkl", 'wb') as output:
+        pickle.dump(ema, output, pickle.HIGHEST_PROTOCOL)
+
+    torch.save(ema, './best_model/ema_final_model_.pt')
+
+
 
 
 if __name__ == "__main__":

@@ -80,12 +80,15 @@ def pseudo_labeling(model, weakly_augment_inputs, threshold):
 
 
 # -----TESTING----- #
-def test_fixmatch(ema, test_data, device):
+def test_fixmatch(ema, test_data, device, last=False):
     # Compute accuracy for the model and ema
     acc_ema_tmp = 0
 
     # Evalutate method for the model
-    ema.eval()
+    if last:
+        ema.ema.eval()
+    else:
+        ema.eval()
     with torch.no_grad():
         n_batches = 0
         if cts.DATASET[0] != "SVHN":
