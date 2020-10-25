@@ -143,8 +143,7 @@ class SSLTransform(object):
 
 
 # -----LOADING DATA----- #
-def dataset_loader(dataset, num_labeled, balanced_split=True, unbalance=0, unbalanced_proportion=1,
-                   sample_proportion=1):
+def load_dataset(dataset):
     labels = None
     if dataset == 'CIFAR-10':
         raw_data = datasets.CIFAR10(cts.DATA_ROOT, train=True, download=True)
@@ -165,13 +164,22 @@ def dataset_loader(dataset, num_labeled, balanced_split=True, unbalance=0, unbal
                                      transform=tensor_normalizer(mean=cts.DATASET[1], std=cts.DATASET[2]),
                                      download=True)
     elif dataset == 'MNIST':
-        test_data = datasets.MNIST(cts.DATA_ROOT, train=True, transform=tensor_normalizer(mean=cts.DATASET[1], std=cts.DATASET[2]),
+        test_data = datasets.MNIST(cts.DATA_ROOT, train=True,
+                                   transform=tensor_normalizer(mean=cts.DATASET[1], std=cts.DATASET[2]),
                                    download=True)
     elif dataset == 'SVHN':
-        test_data = datasets.SVHN(cts.DATA_ROOT, split='test', transform=tensor_normalizer(mean=cts.DATASET[1], std=cts.DATASET[2]),
+        test_data = datasets.SVHN(cts.DATA_ROOT, split='test',
+                                  transform=tensor_normalizer(mean=cts.DATASET[1], std=cts.DATASET[2]),
                                   download=True)
     else:
         exit(0)
+
+    return labels, test_data
+
+
+def dataset_loader(dataset, num_labeled, balanced_split=True, unbalance=0, unbalanced_proportion=1,
+                   sample_proportion=1):
+    labels, test_data = load_dataset(dataset)
 
     labeled_indeces, unlabeled_indeces = split_labeled_unlabeled(
         num_labeled,
