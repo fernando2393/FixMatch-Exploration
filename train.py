@@ -85,9 +85,7 @@ def test_fixmatch(ema, test_data, device, last=False):
     acc_ema_tmp = 0
 
     # Evalutate method for the model
-    if last:
-        ema.ema.eval()
-    else:
+    if not last:
         ema.eval()
     with torch.no_grad():
         n_batches = 0
