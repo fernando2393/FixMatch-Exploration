@@ -1,0 +1,6 @@
+Best model corresponds to epoch: 1010
+Accuracy is: 0.512340784072876
+The parameters were:
+n_labeled_data = 40
+B = 64
+mu = 7
