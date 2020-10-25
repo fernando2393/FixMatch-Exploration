@@ -15,15 +15,5 @@ class EMA():
         self.shadow[name] = new_average.clone()
         return new_average
 
-    def copy_to(self, parameters):
-        """
-        Copies current parameters into given collection of parameters.
-        Args:
-          parameters: Iterable of `torch.nn.Parameter`; the parameters to be
-            updated with the stored moving averages.
-        """
-        for s_param, param in zip(self.shadow_params, parameters):
-            if param.requires_grad:
-                param.data.copy_(s_param.data)
 
 

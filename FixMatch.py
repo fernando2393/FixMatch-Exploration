@@ -69,7 +69,7 @@ def main():
     momentum = 0.9  # Momentum to access the Stochastic Gradient Descent
     nesterov_factor = True  # They found that the nesterov hyperparm wasn't necessary to achieve errors below 5%
     pseudo_label_threshold = 0.95  # Threshold to guarantee confidence on the model
-    total_training_epochs = 2  # Number of training epochs, without early stopping (assuming the model
+    total_training_epochs = 135  # Number of training epochs, without early stopping (assuming the model
     # expects to see 2^26 images during the whole training)
     initial_training_step = 0  # Start the training epoch from zero
     device = torch.device(
@@ -217,7 +217,7 @@ def main():
             scheduler.step()
 
             # Create EMA after warmpup
-            if epoch == 0:
+            if epoch == 10:
                 ema = EMA(ema_decay, device)
                 for name, param in model.named_parameters():
                     if param.requires_grad:
