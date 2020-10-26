@@ -69,7 +69,7 @@ def main():
     momentum = 0.9  # Momentum to access the Stochastic Gradient Descent
     nesterov_factor = True  # They found that the nesterov hyperparm wasn't necessary to achieve errors below 5%
     pseudo_label_threshold = 0.95  # Threshold to guarantee confidence on the model
-    total_training_epochs = 2 ** 10  # Number of training epochs, without early stopping (assuming the model
+    total_training_epochs = 135  # Number of training epochs, without early stopping (assuming the model
     # expects to see 2^26 images during the whole training)
     initial_training_step = 0  # Start the training epoch from zero
     device = torch.device(
@@ -136,7 +136,7 @@ def main():
     # Apply transformations
     labeled_dataset, unlabeled_dataset, train_label_cta = applyTransformations(cts.DATASET[5],
                                                                                labeled_indeces_extension,
-                                                                               labeled_indeces_extension,
+                                                                               labeled_indeces,
                                                                                unlabeled_indeces,
                                                                                cts.DATASET[1],
                                                                                cts.DATASET[2],
@@ -258,6 +258,7 @@ def main():
         if cts.DATASET[0] == "SVHN":
             acc_ema.append([i.item() for i in acc_ema_tmp.tolist()])
             print('Accuracy of ema', acc_ema[-1])
+            print('Mean Acc:', np.mean(acc_ema[-1]))
             acc_comparison = np.mean(acc_ema[-1])
         else:
             acc_ema.append(acc_ema_tmp.item())

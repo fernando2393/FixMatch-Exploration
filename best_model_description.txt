@@ -1,0 +1,15 @@
+Best model corresponds to epoch: 2
+Accuracy class 0 is: 0.18317830562591553
+Accuracy class 1 is: 0.4364188611507416
+Accuracy class 2 is: 0.30300265550613403
+Accuracy class 3 is: 0.2074851542711258
+Accuracy class 4 is: 0.07960532605648041
+Accuracy class 5 is: 0.07593590766191483
+Accuracy class 6 is: 0.061791758984327316
+Accuracy class 7 is: 0.3793913424015045
+Accuracy class 8 is: 0.025234969332814217
+Accuracy class 9 is: 0.018710270524024963
+The parameters were:
+n_labeled_data = 250
+B = 64
+mu = 7
