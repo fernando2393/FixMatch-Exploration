@@ -17,7 +17,7 @@ import pickle
 
 
 # -----SET RANDOMNESS----- #
-def set_seed(seed=42):
+def set_seed(seed=1337):
     torch.backends.cudnn.deterministic = True
     random.seed(seed)
     np.random.seed(seed)
@@ -57,7 +57,7 @@ def plot_performance(title, x_label, y_label, x_data, y_data, color=None):
 
 
 def main():
-    set_seed(42)
+    set_seed(1337)
     CB91_Blue = '#2CBDFE'
     CB91_Green = 'springgreen'
     CB91_Red = '#DA6F6F'
@@ -102,8 +102,7 @@ def main():
     # Query datasets
     # 'sample_proportion' has to go in between 0 and 1
     labeled_indeces, unlabeled_indeces, test_data = dataset_loader(cts.DATASET[0], num_labeled=n_labeled_data,
-                                                                   balanced_split=False, unbalance=3,
-                                                                   unbalanced_proportion= 0.5)
+                                                                   balanced_split=True)
 
     # Reshape indeces to have the same number of batches
     n_unlabeled_images = len(unlabeled_indeces)  # CIFAR - 49750 unlabeled for 250 labeled
@@ -180,8 +179,7 @@ def main():
                 full_train_data):
 
             # Update of CTA
-            if (batch_idx % 15) == 0:
-                cta.update_CTA(model, labeled_train_cta_data, device)
+            cta.update_CTA(model, labeled_train_cta_data, device)
 
             # Current learning rate to compute the loss combination
             lambda_unsupervised = 1
@@ -222,11 +220,15 @@ def main():
                 for name, param in model.named_parameters():
                     if param.requires_grad:
                         ema.register(name, param.data)
-            elif epoch > 10:
+            elif epoch > 10 and epoch != (total_training_epochs - 1):
                 # Update EMA parameters
                 for name, param in model.named_parameters():
                     if param.requires_grad:
                         ema(name, param.data)
+            elif epoch == (total_training_epochs - 1):
+                for name, param in model.named_parameters():
+                    if param.requires_grad:
+                        param.data = ema(name, param.data)
 
         # Test and compute the accuracy for the current model and exponential moving average
         model.zero_grad()
@@ -328,14 +330,11 @@ def main():
     plt.close()
 
     # Print final performance with EMA
-    acc_ema_final = test_fixmatch(ema, test_loader, device, last=True)
+    acc_ema_final = test_fixmatch(model, test_loader, device, last=True)
     print("Final EMA Performance: ", acc_ema_final)
 
     # Saving EMA model
-    with open("EMA.pkl", 'wb') as output:
-        pickle.dump(ema, output, pickle.HIGHEST_PROTOCOL)
-
-    torch.save(ema, './best_model/ema_final_model_.pt')
+    torch.save(model, './best_model/ema_final_model_.pt')
 
 
 
