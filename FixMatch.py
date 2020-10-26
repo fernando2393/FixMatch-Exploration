@@ -69,7 +69,7 @@ def main():
     momentum = 0.9  # Momentum to access the Stochastic Gradient Descent
     nesterov_factor = True  # They found that the nesterov hyperparm wasn't necessary to achieve errors below 5%
     pseudo_label_threshold = 0.95  # Threshold to guarantee confidence on the model
-    total_training_epochs = 135  # Number of training epochs, without early stopping (assuming the model
+    total_training_epochs = 2 ** 10  # Number of training epochs, without early stopping (assuming the model
     # expects to see 2^26 images during the whole training)
     initial_training_step = 0  # Start the training epoch from zero
     device = torch.device(
@@ -179,7 +179,8 @@ def main():
                 full_train_data):
 
             # Update of CTA
-            cta.update_CTA(model, labeled_train_cta_data, device)
+            if batch_idx % 5 == 0:
+                cta.update_CTA(model, labeled_train_cta_data, device)
 
             # Current learning rate to compute the loss combination
             lambda_unsupervised = 1
