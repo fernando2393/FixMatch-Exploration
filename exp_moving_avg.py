@@ -1,5 +1,6 @@
 # Function obtained from: https://discuss.pytorch.org/t/how-to-apply-exponential-moving-average-decay-for-variables/10856/3
 
+
 class EMA():
     def __init__(self, mu, device):
         self.mu = mu

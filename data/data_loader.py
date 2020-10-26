@@ -1,5 +1,6 @@
 # Data manipulation
 import numpy as np
+import torchvision
 from PIL import Image
 
 # Access CIFAR-10, MNIST and SVHN
@@ -99,7 +100,7 @@ def applyTransformations(root, labeled_indeces_extension, labeled_indeces, unlab
 
 # -----CONSTRUCT DATA OBJECTS----- #
 class DataTransformation(cts.DATASET[3]):
-    def __init__(self, root, indeces, transform=None, target_transform=None, download=False):
+    def __init__(self, root, indeces, transform=None, target_transform=None, download=True):
         # Accessing CIFAR10 from torchvision
         super().__init__(root, transform=transform, target_transform=target_transform, download=download)
         if indeces is not None:
@@ -112,6 +113,8 @@ class DataTransformation(cts.DATASET[3]):
     def __getitem__(self, index):
         if hasattr(self, 'targets'):
             img, target = self.data[index], self.targets[index]
+            if cts.DATASET[0] == "MNIST":
+                img = np.repeat(img[:, :, np.newaxis], 3, axis=2)
         else:
             img, target = self.data[index], self.labels[index]
             img = np.transpose(img, (1, 2, 0))  # Transpose image channels to convert into CIFAR format
@@ -120,6 +123,24 @@ class DataTransformation(cts.DATASET[3]):
         if self.transform is not None:
             img = self.transform(img)
 
+        return img, target
+
+
+class DataTransformationMNIST(cts.MNIST[3]):
+    def __init__(self, root, indeces, transform=None, target_transform=None, download=True):
+        # Accessing CIFAR10 from torchvision
+        super().__init__(root, transform=transform, target_transform=target_transform, download=download)
+        if indeces is not None:
+            self.data = self.data[indeces]
+            self.targets = np.array(self.targets)[indeces]
+
+    def __getitem__(self, index):
+        img, target = self.data[index], self.targets[index]
+        img = np.array(np.repeat(img[:, :, np.newaxis], 3, axis=2))
+        img = Image.fromarray(img)
+        img = img.resize((32, 32))  # Resize for 32x32 images
+        if self.transform is not None:
+            img = self.transform(img)
         return img, target
 
 
@@ -146,13 +167,13 @@ class SSLTransform(object):
 def load_dataset(dataset):
     labels = None
     if dataset == 'CIFAR-10':
-        raw_data = datasets.CIFAR10(cts.DATA_ROOT, train=True, download=True)
+        raw_data = datasets.CIFAR10(cts.DATASET[5], train=True, download=True)
         labels = np.array(raw_data.targets)
     elif dataset == 'MNIST':
-        raw_data = datasets.MNIST(cts.DATA_ROOT, train=True, download=True)
+        raw_data = datasets.MNIST(cts.DATASET[5], train=True, download=True)
         labels = np.array(raw_data.targets)
     elif dataset == 'SVHN':
-        raw_data = datasets.SVHN(cts.DATA_ROOT, split='train', download=True)
+        raw_data = datasets.SVHN(cts.DATASET[5], split='train', download=True)
         labels = np.array(raw_data.labels)
     else:
         print("Wrong dataset name")
@@ -160,15 +181,15 @@ def load_dataset(dataset):
 
     test_data = None
     if dataset == 'CIFAR-10':
-        test_data = datasets.CIFAR10(cts.DATA_ROOT, train=False,
+        test_data = datasets.CIFAR10(cts.DATASET[5], train=False,
                                      transform=tensor_normalizer(mean=cts.DATASET[1], std=cts.DATASET[2]),
                                      download=True)
     elif dataset == 'MNIST':
-        test_data = datasets.MNIST(cts.DATA_ROOT, train=True,
+        test_data = datasets.MNIST(cts.DATASET[5], train=True,
                                    transform=tensor_normalizer(mean=cts.DATASET[1], std=cts.DATASET[2]),
                                    download=True)
     elif dataset == 'SVHN':
-        test_data = datasets.SVHN(cts.DATA_ROOT, split='test',
+        test_data = datasets.SVHN(cts.DATASET[5], split='test',
                                   transform=tensor_normalizer(mean=cts.DATASET[1], std=cts.DATASET[2]),
                                   download=True)
     else:

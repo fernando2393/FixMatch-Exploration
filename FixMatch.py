@@ -13,7 +13,7 @@ from exp_moving_avg import EMA
 from WideResNet_PyTorch.src import WideResNet as wrn
 import os
 import Constants as cts
-import pickle
+from torchvision import datasets
 
 
 # -----SET RANDOMNESS----- #
@@ -104,8 +104,12 @@ def main():
     labeled_indeces, unlabeled_indeces, test_data = dataset_loader(cts.DATASET[0], num_labeled=n_labeled_data,
                                                                    balanced_split=True)
 
+    mnist_images = []
+    if cts.SECOND_DATASET[0] == "MNIST":
+        mnist_images = datasets.MNIST(cts.SECOND_DATASET[5], train=True, download=True)
+
     # Reshape indeces to have the same number of batches
-    n_unlabeled_images = len(unlabeled_indeces)  # CIFAR - 49750 unlabeled for 250 labeled
+    n_unlabeled_images = len(unlabeled_indeces) + len(mnist_images)  # CIFAR - 49750 unlabeled for 250 labeled
     n_complete_batches = (n_unlabeled_images // unlabeled_batch_size)  # Number of complete batches 111
     n_images_in_complete_batches = n_complete_batches * B  # 7104
     n_labeles_times = (n_images_in_complete_batches // n_labeled_data)  # 28
@@ -130,7 +134,7 @@ def main():
     cta = ctaug.CTAugment(depth=2, t=0.8, ro=0.99)
 
     # Apply transformations
-    labeled_dataset, unlabeled_dataset, train_label_cta = applyTransformations(cts.DATA_ROOT,
+    labeled_dataset, unlabeled_dataset, train_label_cta = applyTransformations(cts.DATASET[5],
                                                                                labeled_indeces_extension,
                                                                                labeled_indeces_extension,
                                                                                unlabeled_indeces,
@@ -145,10 +149,20 @@ def main():
                                     drop_last=True,
                                     pin_memory=True)
 
-    unlabeled_train_data = DataLoader(unlabeled_dataset, sampler=RandomSampler(unlabeled_dataset),
-                                      batch_size=unlabeled_batch_size, num_workers=0,
-                                      drop_last=True, pin_memory=True)
+    if cts.SECOND_DATASET[0] == "MNIST":
+        mnist_unlabeled_dataset = DataTransformationMNIST(cts.SECOND_DATASET[5], np.arange(len(mnist_images)),
+                                                          transform=SSLTransform(cts.SECOND_DATASET[1],
+                                                                                 cts.SECOND_DATASET[2],
+                                                                                 cta))
+        full_unlabeled = mnist_unlabeled_dataset + unlabeled_dataset
+        unlabeled_train_data = DataLoader(full_unlabeled, sampler=RandomSampler(full_unlabeled),
+                                          batch_size=unlabeled_batch_size, num_workers=0,
+                                          drop_last=True, pin_memory=True)
 
+    else:
+        unlabeled_train_data = DataLoader(unlabeled_dataset, sampler=RandomSampler(unlabeled_dataset),
+                                          batch_size=unlabeled_batch_size, num_workers=0,
+                                          drop_last=True, pin_memory=True)
     test_loader = DataLoader(test_data, sampler=SequentialSampler(test_data),
                              batch_size=B, num_workers=16,
                              pin_memory=True)
@@ -173,13 +187,12 @@ def main():
 
         # Initialize epoch training
         # Train per batch
-        full_train_data = zip(labeled_train_data, unlabeled_train_data)
         for batch_idx, (
-        (labeled_image_batch, labeled_targets), (unlabeled_image_batch, unlabeled_targets)) in enumerate(
-                full_train_data):
+                (labeled_image_batch, labeled_targets), (unlabeled_image_batch, unlabeled_targets)) in \
+                enumerate(zip(labeled_train_data, unlabeled_train_data)):
 
             # Update of CTA
-            if batch_idx % 5 == 0:
+            if batch_idx % 15 == 0:
                 cta.update_CTA(model, labeled_train_cta_data, device)
 
             # Current learning rate to compute the loss combination
@@ -336,8 +349,6 @@ def main():
 
     # Saving EMA model
     torch.save(model, './best_model/ema_final_model_.pt')
-
-
 
 
 if __name__ == "__main__":
