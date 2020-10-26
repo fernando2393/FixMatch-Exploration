@@ -1,0 +1,6 @@
+Best model corresponds to epoch: 587
+Accuracy is: 0.8543989062309265
+The parameters were:
+n_labeled_data = 250
+B = 64
+mu = 7
