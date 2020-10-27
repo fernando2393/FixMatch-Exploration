@@ -11,7 +11,7 @@ import seaborn as sns
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # Load pytorch model
-path = "./results/SVHN_250_unbalanced_3_downsampling_50/best_model/final_model_.pt"
+path = "./results/SVHN_250_oversampling_3_50percent/best_model/ema_final_model_.pt"
 model = torch.load(path)
 model.to(device)
 
@@ -36,7 +36,7 @@ for batch_idx, img_batch in enumerate(test_loader):
 conf_matrix = confusion_matrix(labels, np.array(pred), normalize='true')
 conf_matrix = np.round(conf_matrix * 100, 2)
 sns.heatmap(conf_matrix, annot=True, cmap='Blues')
-plt.savefig("./results/all_balanced_confusion_matrix.png")
+plt.savefig("./results/oversampling_confusion_matrix_EMA.png")
 plt.show()
 
 
