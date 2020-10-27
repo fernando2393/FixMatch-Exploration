@@ -13,7 +13,7 @@ from torchvision import transforms
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # Load pytorch model
-path = "./results/250_MNIST/ema_final_model_.pt"
+path = "./results/SVHN_250_no_unbalanced/best_model/final_model_.pt"
 model = torch.load(path)
 model.to(device)
 
