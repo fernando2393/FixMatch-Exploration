@@ -13,7 +13,7 @@ from torchvision import transforms
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # Load pytorch model
-path = "./results/SVHN_250_no_unbalanced/best_model/final_model_.pt"
+path = "./results/SVHN_250_unbalanced_3_downsampling_50/best_model/final_model_.pt"
 model = torch.load(path)
 model.to(device)
 
@@ -52,11 +52,22 @@ match = (labels == pred) * 1
 accuracy = np.mean(match)
 
 print("Accuracy is: " + str(accuracy))
+accuracy = []
+for i in range(cts.DATASET[4]):
+    tmp_indeces = np.where(labels == i)[0]
+    if len(tmp_indeces) < 1:
+        accuracy.append(0.0)
+    else:
+        match = (labels[tmp_indeces] == np.array(pred)[tmp_indeces]) * 1
+        accuracy.append(np.mean(match))
 
+accuracy_per_class = np.array(accuracy)
+print("Accuracy per class is: " )
+print(accuracy_per_class)
 conf_matrix = confusion_matrix(labels, np.array(pred), normalize='true')
 conf_matrix = np.round(conf_matrix * 100, 2)
 sns.heatmap(conf_matrix, annot=True, cmap='Blues')
-plt.savefig("./results/oversampling_confusion_matrix_SVHN.png")
+plt.savefig("./results/SVHN_250_unbalanced_3_downsampling_50.png")
 plt.show()
 
 
