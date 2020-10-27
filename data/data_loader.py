@@ -127,9 +127,9 @@ class DataTransformation(cts.DATASET[3]):
 
 
 class DataTransformationMNIST(cts.MNIST[3]):
-    def __init__(self, root, indeces, transform=None, target_transform=None, download=True):
+    def __init__(self, root, indeces, transform=None, target_transform=None, download=True, train=True):
         # Accessing CIFAR10 from torchvision
-        super().__init__(root, transform=transform, target_transform=target_transform, download=download)
+        super().__init__(root, transform=transform, target_transform=target_transform, download=download, train=train)
         if indeces is not None:
             self.data = self.data[indeces]
             self.targets = np.array(self.targets)[indeces]
@@ -185,7 +185,7 @@ def load_dataset(dataset):
                                      transform=tensor_normalizer(mean=cts.DATASET[1], std=cts.DATASET[2]),
                                      download=True)
     elif dataset == 'MNIST':
-        test_data = datasets.MNIST(cts.DATASET[5], train=True,
+        test_data = datasets.MNIST(cts.DATASET[5], train=False,
                                    transform=tensor_normalizer(mean=cts.DATASET[1], std=cts.DATASET[2]),
                                    download=True)
     elif dataset == 'SVHN':
