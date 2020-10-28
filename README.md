@@ -11,7 +11,7 @@ The tasks we performed are the followings:
 4. Employing the merge of different datasets of the same nature as unlabeled data, SVHN and [MNIST](http://yann.lecun.com/exdb/mnist/) in this case.
 
 The main outcomes obtained in each task can be seen below. In order to get a deeper insight of
-our findings, go to [FixMacth & SLL Exploration](fixmatch_and_ssl_exploration.pdf).
+our findings, go to [FixMatch & SLL Exploration](fixmatch_and_ssl_exploration.pdf).
 * Task 1:
 
 | Dataset        | Labeled Samples  | Test Accuracy     |
