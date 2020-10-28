@@ -21,14 +21,9 @@ our findings, go to [FixMacth & SLL Exploration](fixmatch_and_ssl_exploration.pd
 | CIFAR-10       | 40               | 64.44%            |
 | SVHN           | 250              | 95.29%            |
 
-<p>
-    <img alt="Accuracy CIFAR-10 40 labels" src="/Results/CIFAR-10_40/Accuracy40.png" width="250"/>
-    <em>Accuracy CIFAR-10 40 labels.</em>
-</p>
-<p>
-    <img alt="Accuracy CIFAR-10 250 labels" src="/Results/CIFAR-10_250/Accuracy250.png" width="250"/>
-    <em>Accuracy CIFAR-10 250 labels.</em>
-</p>
+| <img alt="Accuracy CIFAR-10 40 labels" src="/Results/CIFAR-10_40/Accuracy40.png" width="250"/> | <img alt="Accuracy CIFAR-10 250 labels" src="/Results/CIFAR-10_250/Accuracy250.png" width="250"/> |
+|:--:|:--:|
+| *Accuracy CIFAR-10 40 labels.* | *Accuracy CIFAR-10 250 labels.*|
 
 ![Accuracy CIFAR-10 4000 labels](/Results/CIFAR-10_4000/Accuracy4000.png)
 ![Accuracy SVHN 250 labels](/Results/SVHN_250/Accuracy250.png)
