@@ -2,17 +2,16 @@ import random
 import torch
 import matplotlib.pyplot as plt
 import torch.backends.cudnn as cudnn
+import CTAugment as ctaug
+import torch.optim as optim
+import os
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 from tqdm import tqdm
-from train import train_fixmatch, test_fixmatch
-import CTAugment as ctaug
-from data.data_loader import *
-import torch.optim as optim
-from exp_moving_avg import EMA
+from Train import train_fixmatch, test_fixmatch
+from data.DataLoader import *
+from ExpMovingAvg import EMA
 from WideResNet_PyTorch.src import WideResNet as wrn
-import os
-import Constants as cts
 from torchvision import datasets
 
 
@@ -26,9 +25,8 @@ def set_seed(seed=1337):
 
 
 # -----DEFINE FUNCTIONS----- #
-def cyclic_learning_rate_with_warmup(warmup_steps, step, total_training_steps):
+def cyclic_learning_rate_with_warmup(warmup_steps, total_training_steps):
     # If you don't achieve the number of warmup steps, don't update
-
     def scheduler_function(step):
         if step < warmup_steps:
             return float(step) / float(warmup_steps)
@@ -71,7 +69,6 @@ def main():
     pseudo_label_threshold = 0.95  # Threshold to guarantee confidence on the model
     total_training_epochs = 135  # Number of training epochs, without early stopping (assuming the model
     # expects to see 2^26 images during the whole training)
-    initial_training_step = 0  # Start the training epoch from zero
     device = torch.device(
         "cuda:0" if torch.cuda.is_available() else "cpu")  # Create device to perform computations in GPU (if available)
     ema_decay = 0.999
@@ -127,7 +124,6 @@ def main():
     # LambdaLR: Sets the learning rate of each parameter group to the initial lr times a given function.
     # (Pytorch documentation)
     scheduler = LambdaLR(optimizer=optimizer, lr_lambda=cyclic_learning_rate_with_warmup(warmup_steps,
-                                                                                         initial_training_step,
                                                                                          total_training_steps))
 
     # Define CTA augmentation
@@ -175,7 +171,7 @@ def main():
 
     # Compute best accuracy
     best_acc = 0
-
+    ema = EMA(ema_decay, device)  # Initialize ema
     for epoch in tqdm(range(total_training_epochs)):
         print('TRAINING epoch', epoch + 1)
 
@@ -203,15 +199,9 @@ def main():
 
             # Train model, update weights per epoch based on the combination of labeled and unlabeled losses
             model.train()
-            semi_supervised_loss, supervised_loss, unsupervised_loss, unsupervised_ratio = train_fixmatch(model,
-                                                                                                          device,
-                                                                                                          labeled_image_batch,
-                                                                                                          labeled_targets,
-                                                                                                          unlabeled_image_batch,
-                                                                                                          unlabeled_batch_size,
-                                                                                                          lambda_unsupervised,
-                                                                                                          pseudo_label_threshold
-                                                                                                          )
+            semi_supervised_loss, supervised_loss, unsupervised_loss, unsupervised_ratio = \
+                train_fixmatch(model, device, labeled_image_batch, labeled_targets, unlabeled_image_batch,
+                               unlabeled_batch_size, lambda_unsupervised, pseudo_label_threshold)
 
             # Update the weights
             semi_supervised_loss.backward()
@@ -230,7 +220,6 @@ def main():
 
             # Create EMA after warmpup
             if epoch == 10:
-                ema = EMA(ema_decay, device)
                 for name, param in model.named_parameters():
                     if param.requires_grad:
                         ema.register(name, param.data)

@@ -11,4 +11,5 @@ CIFAR = ("CIFAR-10", CIFAR10_mean, CIFAR10_std, datasets.CIFAR10, 10, "data")
 MNIST = ("MNIST", MNIST_mean, MNIST_std, datasets.MNIST, 10, "data/MNIST")
 SVHN = ("SVHN", SVHN_mean, SVHN_std, datasets.SVHN, 10, "data")
 DATASET = SVHN  # Replace by the proper dataset
-SECOND_DATASET = ("", MNIST_mean, MNIST_std, datasets.MNIST, 10, "data/MNIST")
+SECOND_DATASET = ("", MNIST_mean, MNIST_std, datasets.MNIST, 10, "data/MNIST")  # Leave first
+# element as "" for not to employ it

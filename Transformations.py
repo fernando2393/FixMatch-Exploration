@@ -19,16 +19,16 @@ def blur(x, level):
     return _filter(x, ImageFilter.BLUR, level)
 
 
-def brightness(x, brightness):
-    return _enhance(x, ImageEnhance.Brightness, brightness)
+def brightness(x, brightness_val):
+    return _enhance(x, ImageEnhance.Brightness, brightness_val)
 
 
-def color(x, color):
-    return _enhance(x, ImageEnhance.Color, color)
+def color(x, color_val):
+    return _enhance(x, ImageEnhance.Color, color_val)
 
 
-def contrast(x, contrast):
-    return _enhance(x, ImageEnhance.Contrast, contrast)
+def contrast(x, contrast_val):
+    return _enhance(x, ImageEnhance.Contrast, contrast_val)
 
 
 def cutout(x, level):
@@ -79,8 +79,8 @@ def rotate(x, angle):
     return x.rotate(angle)
 
 
-def sharpness(x, sharpness):
-    return _enhance(x, ImageEnhance.Sharpness, sharpness)
+def sharpness(x, sharpness_val):
+    return _enhance(x, ImageEnhance.Sharpness, sharpness_val)
 
 
 def shear_x(x, shear):

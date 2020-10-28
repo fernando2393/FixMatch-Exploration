@@ -2,15 +2,11 @@
 Adapted from original Google Research Code:
 https://github.com/google-research/fixmatch/blob/master/libml/ctaugment.py
 """
-from torch.utils.data import Dataset
 import inspect
 import random
 import numpy as np
 import Transformations
 import torch
-import torchvision.transforms as transforms
-from PIL import Image, ImageOps, ImageEnhance, ImageFilter
-
 
 
 def linenum(x):
@@ -83,8 +79,9 @@ class CTAugment:
         # * sum(abs(p_model - p)). This measures the extent to which the model’s prediction matches the label
         for operation, bin_vals in policy_val:
             for rate, bin_val in zip(self.rates[operation], bin_vals):
-                bin_position = max(int(bin_val*len(rate) - 0.001), 0)  # Selecting in which bin position we are in (e.g. if the parameter
-                # is divided into 17 bins, we are selecting which of these bins we are working with (0, 1, 2,...16)).
+                bin_position = max(int(bin_val*len(rate) - 0.001), 0)  # Selecting in which bin position we are in (
+                # e.g. if the parameter is divided into 17 bins, we are selecting which of these bins we are
+                # working with (0, 1, 2,...16)).
                 rate[bin_position] = rate[bin_position] * self.ro + w * (
                         1 - self.ro)  # Updating the weight of the bin we selected in bin_position
 
@@ -131,4 +128,3 @@ def cutout_strong(level=1):
         return transformed_image
 
     return myfun_cutout
-

@@ -1,0 +1,6 @@
+Best model corresponds to epoch: 931
+Accuracy is: 0.9070461988449097
+The parameters were:
+n_labeled_data = 4000
+B = 64
+mu = 7
