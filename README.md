@@ -38,8 +38,7 @@ our findings, go to [FixMacth & SLL Exploration](fixmatch_and_ssl_exploration.pd
 | SVHN           | 0.5              | 91.29%               | 96.35%
 | SVHN           | 1.5              | 95.62%               | 97.06%
 
-| <img alt="Confusion matrix SVHN class 3 not scaled" src="/Results/SVHN_Unbalanced_Class/all_balanced_confusion_matrix.png" width="200"/> | <img alt="Confusion matrix SVHN class 3 downscaled 50%" src="/Results/SVHN_Unbalanced_Class/downsampling_confusion_matrix.png" width="250"/> | 
-<img alt="Confusion matrix SVHN class 3 upscaled 50%" src="/Results/SVHN_Unbalanced_Class/oversampling_confusion_matrix.png" width="200"/> |
+| <img alt="Confusion matrix SVHN class 3 not scaled" src="/Results/SVHN_Unbalanced_Class/all_balanced_confusion_matrix.png" width="200"/> | <img alt="Confusion matrix SVHN class 3 downscaled 50%" src="/Results/SVHN_Unbalanced_Class/downsampling_confusion_matrix.png" width="200"/> | <img alt="Confusion matrix SVHN class 3 upscaled 50%" src="/Results/SVHN_Unbalanced_Class/oversampling_confusion_matrix.png" width="200"/> |
 |:--:|:--:|:--:|
 | *Confusion matrix SVHN class 3 not scaled.* | *Confusion matrix SVHN class 3 downscaled 50%.*| *Confusion matrix SVHN class 3 upscaled 50%* |
 
