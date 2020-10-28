@@ -1,3 +1,8 @@
+"""
+Implemented by:
+https://github.com/AlexandrosFerles/Wide-Residual-Networks-PyTorch
+"""
+
 import torch
 import torch.nn as nn
 import math
