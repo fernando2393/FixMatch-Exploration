@@ -1,0 +1,6 @@
+Best model corresponds to epoch: 453
+Accuracy is: 0.5793192982673645
+The parameters were:
+n_labeled_data = 40
+B = 64
+mu = 7
