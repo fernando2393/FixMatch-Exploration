@@ -21,12 +21,15 @@ our findings, go to [FixMacth & SLL Exploration](fixmatch_and_ssl_exploration.pd
 | CIFAR-10       | 40               | 64.44%            |
 | SVHN           | 250              | 95.29%            |
 
+|:--:|:--:|
 | <img alt="Accuracy CIFAR-10 40 labels" src="/Results/CIFAR-10_40/Accuracy40.png" width="250"/> | <img alt="Accuracy CIFAR-10 250 labels" src="/Results/CIFAR-10_250/Accuracy250.png" width="250"/> |
 |:--:|:--:|
 | *Accuracy CIFAR-10 40 labels.* | *Accuracy CIFAR-10 250 labels.*|
 
-![Accuracy CIFAR-10 4000 labels](/Results/CIFAR-10_4000/Accuracy4000.png)
-![Accuracy SVHN 250 labels](/Results/SVHN_250/Accuracy250.png)
+|:--:|:--:|
+| <img alt="Accuracy CIFAR-10 4000 labels" src="/Results/CIFAR-10_4000/Accuracy4000.png" width="250"/> | <img alt="Accuracy SVHN 250 labels" src="/Results/SVHN_250/Accuracy250.png" width="250"/> |
+|:--:|:--:|
+| *Accuracy CIFAR-10 4000 labels.* | *Accuracy SVHN 250 labels.*|
 
 
 * Task 2:
@@ -37,9 +40,11 @@ our findings, go to [FixMacth & SLL Exploration](fixmatch_and_ssl_exploration.pd
 | SVHN           | 0.5              | 91.29%               | 96.35%
 | SVHN           | 1.5              | 95.62%               | 97.06%
 
-![Confusion matrix SVHN class 3 not scaled](/Results/SVHN_Unbalanced_Class/all_balanced_confusion_matrix.png)
-![Confusion matrix SVHN class 3 downscaled 50%](/Results/SVHN_Unbalanced_Class/downsampling_confusion_matrix.png)
-![Confusion matrix SVHN class 3 upscaled 50%](/Results/SVHN_Unbalanced_Class/oversampling_confusion_matrix.png)
+|:--:|:--:|:--:|
+| <img alt="Confusion matrix SVHN class 3 not scaled" src="/Results/SVHN_Unbalanced_Class/all_balanced_confusion_matrix.png" width="200"/> | <img alt="Confusion matrix SVHN class 3 downscaled 50%" src="/Results/SVHN_Unbalanced_Class/downsampling_confusion_matrix.png" width="250"/> | 
+<img alt="Confusion matrix SVHN class 3 upscaled 50%" src="/Results/SVHN_Unbalanced_Class/oversampling_confusion_matrix.png" width="200"/> |
+|:--:|:--:|:--:|
+| *Confusion matrix SVHN class 3 not scaled.* | *Confusion matrix SVHN class 3 downscaled 50%.*| *Confusion matrix SVHN class 3 upscaled 50%* |
 
 * Task 3:
 
@@ -50,11 +55,15 @@ our findings, go to [FixMacth & SLL Exploration](fixmatch_and_ssl_exploration.pd
 | CIFAR-10       | 75%                                 | 57.93%            |
 | CIFAR-10       | 100%                                | 64.44%            |
 
-![Accuracy CIFAR-10 25% unlabeled data](/Results/CIFAR-10_40_0.25/Accuracy40_0.25.png)
-![Accuracy CIFAR-10 50% unlabeled data](/Results/CIFAR-10_40_0.5/Accuracy40_0.5.png)
+|:--:|:--:|
+| <img alt="Accuracy CIFAR-10 25% unlabeled data" src="/Results/CIFAR-10_40_0.25/Accuracy40_0.25.png" width="250"/> | <img alt="Accuracy CIFAR-10 50% unlabeled data" src="/Results/CIFAR-10_40_0.5/Accuracy40_0.5.png" width="250"/> |
+|:--:|:--:|
+| *Accuracy CIFAR-10 25% unlabeled data.* | *Accuracy CIFAR-10 50% unlabeled data.*|
 
-![Accuracy CIFAR-10 75% unlabeled data](/Results/CIFAR-10_40_0.75/Accuracy40_0.75.png)
-![Accuracy CIFAR-10 100% unlabeled data](/Results/CIFAR-10_40/Accuracy40.png)
+|:--:|:--:|
+| <img alt="Accuracy CIFAR-10 75% unlabeled data" src="/Results/CIFAR-10_40_0.75/Accuracy40_0.75.png" width="250"/> | <img alt="Accuracy CIFAR-10 100% unlabeled data" src="/Results/CIFAR-10_40/Accuracy40.png" width="250"/> |
+|:--:|:--:|
+| *Accuracy CIFAR-10 75% unlabeled data.* | *Accuracy CIFAR-10 100% unlabeled data.*|
 
 * Task 4:
 
@@ -65,5 +74,7 @@ our findings, go to [FixMacth & SLL Exploration](fixmatch_and_ssl_exploration.pd
 | SVHN                 | SVHN and MNIST          | SVHN         | 96.51%
 | SVHN                 | SVHN and MNIST          | MNIST        | 86.04%
 
-![Confusion matrix SVHN merged unlabeled data](/Results/SVHN_250_MNIST/confusion_matrix_SVHN.png)
-![Confusion matrix MNIST merged unlabeled data](/Results/SVHN_250_MNIST/confusion_matrix_MNIST.png)
+|:--:|:--:|
+| <img alt="Confusion matrix SVHN merged unlabeled data" src="/Results/SVHN_250_MNIST/confusion_matrix_SVHN.png" width="250"/> | <img alt="Confusion matrix MNIST merged unlabeled data" src="/Results/SVHN_250_MNIST/confusion_matrix_MNIST.png" width="250"/> |
+|:--:|:--:|
+| *Confusion matrix SVHN merged unlabeled data.* | *Confusion matrix MNIST merged unlabeled data.*|
